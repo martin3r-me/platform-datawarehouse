@@ -3,11 +3,18 @@
 namespace Platform\Datawarehouse\Livewire;
 
 use Livewire\Component;
+use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 
 class Dashboard extends Component
 {
+    #[On('datawarehouse:stream-created')]
+    public function refreshStreams(): void
+    {
+        // Re-renders automatically
+    }
+
     public function render()
     {
         $user = Auth::user();
