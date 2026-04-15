@@ -1,0 +1,27 @@
+{
+    "name": "martin3r/platform-datawarehouse",
+    "description": "Datawarehouse Module for Platform - Collects, stores, and serves data from various sources",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Platform Team",
+            "email": "team@platform.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Platform\\Datawarehouse\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Platform\\Datawarehouse\\DatawarehouseServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

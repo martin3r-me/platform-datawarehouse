@@ -1,0 +1,213 @@
+<?php
+
+namespace Platform\Datawarehouse\Services;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
+use Platform\Datawarehouse\Models\DatawarehouseStream;
+use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
+use Platform\Datawarehouse\Models\DatawarehouseSchemaMigration;
+
+class StreamSchemaService
+{
+    /**
+     * Create the dynamic table for a stream based on its column definitions.
+     */
+    public function createTable(DatawarehouseStream $stream, ?int $userId = null): void
+    {
+        $tableName = $stream->getDynamicTableName();
+        $columns = $stream->columns()->where('is_active', true)->orderBy('position')->get();
+
+        if ($columns->isEmpty()) {
+            throw new \RuntimeException("Stream '{$stream->name}' has no columns defined.");
+        }
+
+        $sql = null;
+
+        try {
+            Schema::create($tableName, function (Blueprint $table) use ($columns) {
+                $table->id();
+                $table->unsignedBigInteger('import_id')->nullable()->index();
+                $table->timestamp('imported_at')->nullable();
+
+                foreach ($columns as $col) {
+                    $colDef = $col->toLaravelColumnType();
+                    $column = $table->{$colDef['type']}($col->column_name, ...$colDef['args']);
+
+                    if ($col->is_nullable) {
+                        $column->nullable();
+                    }
+
+                    if ($col->default_value !== null) {
+                        $column->default($col->default_value);
+                    }
+
+                    if ($col->is_indexed) {
+                        $table->index($col->column_name);
+                    }
+                }
+
+                $table->timestamps();
+            });
+
+            $sql = "CREATE TABLE {$tableName} (...)"; // simplified for audit log
+
+            $stream->update([
+                'table_name'     => $tableName,
+                'table_created'  => true,
+                'schema_version' => $stream->schema_version + 1,
+            ]);
+
+            $this->logSchemaMigration($stream, $userId, 'create_table', null, null, [
+                'columns' => $columns->pluck('column_name')->toArray(),
+            ], $sql, 'success');
+
+        } catch (\Throwable $e) {
+            $this->logSchemaMigration($stream, $userId, 'create_table', null, null, null, $sql, 'error');
+            throw $e;
+        }
+    }
+
+    /**
+     * Add a column to an existing dynamic table.
+     */
+    public function addColumn(DatawarehouseStream $stream, DatawarehouseStreamColumn $column, ?int $userId = null): void
+    {
+        $tableName = $stream->getDynamicTableName();
+
+        if (!Schema::hasTable($tableName)) {
+            throw new \RuntimeException("Table '{$tableName}' does not exist.");
+        }
+
+        $colDef = $column->toLaravelColumnType();
+        $sql = null;
+
+        try {
+            Schema::table($tableName, function (Blueprint $table) use ($column, $colDef) {
+                $col = $table->{$colDef['type']}($column->column_name, ...$colDef['args']);
+
+                if ($column->is_nullable) {
+                    $col->nullable();
+                }
+
+                if ($column->default_value !== null) {
+                    $col->default($column->default_value);
+                }
+
+                if ($column->is_indexed) {
+                    $table->index($column->column_name);
+                }
+            });
+
+            $sql = "ALTER TABLE {$tableName} ADD COLUMN {$column->column_name}";
+
+            $stream->increment('schema_version');
+
+            $this->logSchemaMigration($stream, $userId, 'add_column', $column->column_name, null, [
+                'data_type'  => $column->data_type,
+                'is_nullable' => $column->is_nullable,
+                'is_indexed' => $column->is_indexed,
+            ], $sql, 'success');
+
+        } catch (\Throwable $e) {
+            $this->logSchemaMigration($stream, $userId, 'add_column', $column->column_name, null, null, $sql, 'error');
+            throw $e;
+        }
+    }
+
+    /**
+     * Modify an existing column in the dynamic table.
+     */
+    public function modifyColumn(DatawarehouseStream $stream, DatawarehouseStreamColumn $column, array $oldDefinition, ?int $userId = null): void
+    {
+        $tableName = $stream->getDynamicTableName();
+
+        if (!Schema::hasTable($tableName)) {
+            throw new \RuntimeException("Table '{$tableName}' does not exist.");
+        }
+
+        $colDef = $column->toLaravelColumnType();
+        $sql = null;
+
+        try {
+            Schema::table($tableName, function (Blueprint $table) use ($column, $colDef) {
+                $col = $table->{$colDef['type']}($column->column_name, ...$colDef['args'])->change();
+
+                if ($column->is_nullable) {
+                    $col->nullable();
+                }
+
+                if ($column->default_value !== null) {
+                    $col->default($column->default_value);
+                }
+            });
+
+            $sql = "ALTER TABLE {$tableName} MODIFY COLUMN {$column->column_name}";
+
+            $stream->increment('schema_version');
+
+            $this->logSchemaMigration($stream, $userId, 'modify_column', $column->column_name, $oldDefinition, [
+                'data_type'  => $column->data_type,
+                'is_nullable' => $column->is_nullable,
+            ], $sql, 'success');
+
+        } catch (\Throwable $e) {
+            $this->logSchemaMigration($stream, $userId, 'modify_column', $column->column_name, $oldDefinition, null, $sql, 'error');
+            throw $e;
+        }
+    }
+
+    /**
+     * Drop a column from the dynamic table.
+     */
+    public function dropColumn(DatawarehouseStream $stream, string $columnName, array $oldDefinition = [], ?int $userId = null): void
+    {
+        $tableName = $stream->getDynamicTableName();
+
+        if (!Schema::hasTable($tableName)) {
+            throw new \RuntimeException("Table '{$tableName}' does not exist.");
+        }
+
+        $sql = null;
+
+        try {
+            Schema::table($tableName, function (Blueprint $table) use ($columnName) {
+                $table->dropColumn($columnName);
+            });
+
+            $sql = "ALTER TABLE {$tableName} DROP COLUMN {$columnName}";
+
+            $stream->increment('schema_version');
+
+            $this->logSchemaMigration($stream, $userId, 'drop_column', $columnName, $oldDefinition, null, $sql, 'success');
+
+        } catch (\Throwable $e) {
+            $this->logSchemaMigration($stream, $userId, 'drop_column', $columnName, $oldDefinition, null, $sql, 'error');
+            throw $e;
+        }
+    }
+
+    protected function logSchemaMigration(
+        DatawarehouseStream $stream,
+        ?int $userId,
+        string $operation,
+        ?string $columnName,
+        ?array $oldDefinition,
+        ?array $newDefinition,
+        ?string $sql,
+        string $status
+    ): void {
+        DatawarehouseSchemaMigration::create([
+            'stream_id'      => $stream->id,
+            'user_id'        => $userId,
+            'version'        => $stream->schema_version,
+            'operation'      => $operation,
+            'column_name'    => $columnName,
+            'old_definition' => $oldDefinition,
+            'new_definition' => $newDefinition,
+            'sql_executed'   => $sql,
+            'status'         => $status,
+        ]);
+    }
+}
