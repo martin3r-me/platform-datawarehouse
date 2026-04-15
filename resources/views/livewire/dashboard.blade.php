@@ -102,14 +102,28 @@
                                     @endif
                                     <span class="text-xs text-[var(--ui-muted)]">{{ $stream->imports_count }} Imports</span>
                                     @if($stream->isWebhook() && $stream->endpoint_token)
-                                        <span x-data="{ show: false }" class="relative">
-                                            <button @click="show = !show" class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors" title="Webhook-Token anzeigen">
-                                                @svg('heroicon-o-key', 'w-4 h-4')
+                                        <span x-data="{ show: false, copied: false }" class="relative">
+                                            <button @click="show = !show" class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors" title="Webhook-URL anzeigen">
+                                                @svg('heroicon-o-link', 'w-4 h-4')
                                             </button>
                                             <div x-show="show" x-cloak @click.away="show = false"
-                                                class="absolute right-0 top-8 z-10 p-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] shadow-lg w-80">
+                                                class="absolute right-0 top-8 z-10 p-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] shadow-lg w-96">
                                                 <div class="text-xs text-[var(--ui-muted)] mb-1">Webhook-URL:</div>
-                                                <code class="text-xs text-[var(--ui-secondary)] break-all select-all">{{ url('/api/datawarehouse/ingest/' . $stream->endpoint_token) }}</code>
+                                                <div class="flex items-center gap-2">
+                                                    <code class="flex-1 text-xs text-[var(--ui-secondary)] break-all select-all font-mono">{{ url('/api/datawarehouse/ingest/' . $stream->endpoint_token) }}</code>
+                                                    <button
+                                                        @click="navigator.clipboard.writeText('{{ url('/api/datawarehouse/ingest/' . $stream->endpoint_token) }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                        class="shrink-0 p-1.5 rounded hover:bg-[var(--ui-muted-5)] text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
+                                                        title="Kopieren"
+                                                    >
+                                                        <template x-if="!copied">
+                                                            @svg('heroicon-o-clipboard-document', 'w-4 h-4')
+                                                        </template>
+                                                        <template x-if="copied">
+                                                            @svg('heroicon-o-check', 'w-4 h-4 text-green-600')
+                                                        </template>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </span>
                                     @endif

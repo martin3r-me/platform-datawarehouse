@@ -24,18 +24,24 @@ class ModalCreateStream extends Component
     // Column definitions
     public array $columns = [];
 
+    // Success state - shows webhook URL after creation
+    public bool $created = false;
+    public string $webhookUrl = '';
+    public string $createdStreamName = '';
+
     #[On('datawarehouse:create-stream')]
     public function openModal(): void
     {
-        $this->reset('name', 'description', 'source_type', 'mode', 'upsert_key', 'columns');
+        $this->reset('name', 'description', 'source_type', 'mode', 'upsert_key', 'columns', 'created', 'webhookUrl', 'createdStreamName');
         $this->resetValidation();
-        $this->addColumn(); // Start with one empty column
+        $this->addColumn();
         $this->open = true;
     }
 
     public function close(): void
     {
         $this->open = false;
+        $this->created = false;
     }
 
     public function addColumn(): void
@@ -104,7 +110,6 @@ class ModalCreateStream extends Component
             'upsert_key'  => $this->mode === 'upsert' ? $this->upsert_key : null,
         ]);
 
-        // Create column definitions
         foreach ($this->columns as $position => $col) {
             $columnName = Str::snake($col['source_key']);
 
@@ -125,18 +130,15 @@ class ModalCreateStream extends Component
         try {
             app(StreamSchemaService::class)->createTable($stream, $user->id);
         } catch (\Throwable $e) {
-            // Table creation failed - stream is still usable, table will be created on first import
+            // Table will be created on first import
         }
 
-        $this->open = false;
+        // Switch to success view with webhook URL
+        $this->createdStreamName = $stream->name;
+        $this->webhookUrl = url('/api/datawarehouse/ingest/' . $stream->endpoint_token);
+        $this->created = true;
+
         $this->dispatch('datawarehouse:stream-created');
-        $this->dispatch('notifications:store', [
-            'title'         => 'Datenstrom erstellt',
-            'message'       => "'{$stream->name}' wurde erfolgreich angelegt.",
-            'notice_type'   => 'success',
-            'noticable_type' => DatawarehouseStream::class,
-            'noticable_id'  => $stream->id,
-        ]);
     }
 
     public function render()
