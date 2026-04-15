@@ -26,11 +26,24 @@ class IngestController extends Controller
             return response()->json(['error' => 'Invalid or inactive token.'], 404);
         }
 
+        // Try raw JSON body first, then fall back to form data
         $rawData = $request->getContent();
         $payload = json_decode($rawData, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return response()->json(['error' => 'Invalid JSON payload.'], 422);
+            // Fallback: try request input (handles form-data, x-www-form-urlencoded, ?json= query param)
+            $input = $request->all();
+
+            if (!empty($input)) {
+                $payload = $input;
+                $rawData = json_encode($input);
+            } else {
+                return response()->json([
+                    'error'   => 'Invalid JSON payload.',
+                    'hint'    => 'Send data as JSON body with Content-Type: application/json, or as form fields.',
+                    'received_content_type' => $request->header('Content-Type'),
+                ], 422);
+            }
         }
 
         // Onboarding: store sample payload, don't import into dynamic table
