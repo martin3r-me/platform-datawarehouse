@@ -76,11 +76,33 @@
                 @else
                     <div class="divide-y divide-[var(--ui-border)]">
                         @foreach($streams as $stream)
-                            <div class="p-4 flex items-center justify-between hover:bg-[var(--ui-muted-5)] transition-colors">
+                            @php
+                                $isOnboarding = $stream->status === 'onboarding';
+                                $href = $isOnboarding ? route('datawarehouse.stream.onboarding', $stream) : null;
+                            @endphp
+                            <{{ $href ? 'a' : 'div' }}
+                                @if($href) href="{{ $href }}" @endif
+                                class="p-4 flex items-center justify-between hover:bg-[var(--ui-muted-5)] transition-colors {{ $href ? 'block' : '' }}"
+                            >
                                 <div class="flex items-center gap-3 min-w-0">
-                                    <div class="w-2 h-2 rounded-full shrink-0 {{ $stream->is_active ? 'bg-green-500' : 'bg-gray-400' }}"></div>
+                                    @if($isOnboarding)
+                                        <div class="w-2 h-2 rounded-full shrink-0 bg-amber-500 animate-pulse"></div>
+                                    @elseif($stream->status === 'active')
+                                        <div class="w-2 h-2 rounded-full shrink-0 bg-green-500"></div>
+                                    @elseif($stream->status === 'paused')
+                                        <div class="w-2 h-2 rounded-full shrink-0 bg-gray-400"></div>
+                                    @else
+                                        <div class="w-2 h-2 rounded-full shrink-0 bg-gray-300"></div>
+                                    @endif
                                     <div class="min-w-0">
-                                        <div class="font-medium text-[var(--ui-secondary)]">{{ $stream->name }}</div>
+                                        <div class="font-medium text-[var(--ui-secondary)] flex items-center gap-2">
+                                            {{ $stream->name }}
+                                            @if($isOnboarding)
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Onboarding</span>
+                                            @elseif($stream->status === 'paused')
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Pausiert</span>
+                                            @endif
+                                        </div>
                                         <div class="text-xs text-[var(--ui-muted)] flex items-center gap-1 flex-wrap">
                                             <span class="px-1.5 py-0.5 rounded bg-[var(--ui-muted-5)]">{{ $stream->source_type }}</span>
                                             <span>&middot;</span>
@@ -93,17 +115,25 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-3 shrink-0">
-                                    @if($stream->last_status === 'success')
-                                        <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Erfolg</span>
-                                    @elseif($stream->last_status === 'error')
-                                        <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800">Fehler</span>
-                                    @elseif($stream->last_status === 'partial')
-                                        <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">Teilweise</span>
+                                    @if($isOnboarding)
+                                        @if($stream->sample_payload)
+                                            <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800">Daten empfangen</span>
+                                        @else
+                                            <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">Warte auf Daten</span>
+                                        @endif
+                                    @else
+                                        @if($stream->last_status === 'success')
+                                            <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Erfolg</span>
+                                        @elseif($stream->last_status === 'error')
+                                            <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800">Fehler</span>
+                                        @elseif($stream->last_status === 'partial')
+                                            <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">Teilweise</span>
+                                        @endif
+                                        <span class="text-xs text-[var(--ui-muted)]">{{ $stream->imports_count }} Imports</span>
                                     @endif
-                                    <span class="text-xs text-[var(--ui-muted)]">{{ $stream->imports_count }} Imports</span>
-                                    @if($stream->isWebhook() && $stream->endpoint_token)
+                                    @if($stream->isWebhook() && $stream->endpoint_token && !$isOnboarding)
                                         <span x-data="{ show: false, copied: false }" class="relative">
-                                            <button @click="show = !show" class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors" title="Webhook-URL anzeigen">
+                                            <button @click.prevent="show = !show" class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors" title="Webhook-URL anzeigen">
                                                 @svg('heroicon-o-link', 'w-4 h-4')
                                             </button>
                                             <div x-show="show" x-cloak @click.away="show = false"
@@ -128,7 +158,7 @@
                                         </span>
                                     @endif
                                 </div>
-                            </div>
+                            </{{ $href ? 'a' : 'div' }}>
                         @endforeach
                     </div>
                 @endif
@@ -150,6 +180,12 @@
                             <div class="text-xs text-[var(--ui-muted)]">Aktiv</div>
                             <div class="text-lg font-bold text-[var(--ui-secondary)]">{{ $stats['active'] }}</div>
                         </div>
+                        @if($stats['onboarding'] > 0)
+                            <div class="p-3 bg-amber-50 rounded-lg border border-amber-200/40">
+                                <div class="text-xs text-amber-700">Onboarding</div>
+                                <div class="text-lg font-bold text-amber-800">{{ $stats['onboarding'] }}</div>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -31,7 +31,7 @@ class DatawarehouseStream extends Model
         'table_name',
         'table_created',
         'schema_version',
-        'is_active',
+        'status',
         'last_run_at',
         'last_status',
         'metadata',
@@ -41,7 +41,6 @@ class DatawarehouseStream extends Model
         'pull_headers'  => 'array',
         'metadata'      => 'array',
         'table_created' => 'boolean',
-        'is_active'     => 'boolean',
         'last_run_at'   => 'datetime',
     ];
 
@@ -56,6 +55,9 @@ class DatawarehouseStream extends Model
             }
             if (empty($stream->slug)) {
                 $stream->slug = Str::slug($stream->name);
+            }
+            if (empty($stream->status)) {
+                $stream->status = 'onboarding';
             }
         });
     }
@@ -87,6 +89,36 @@ class DatawarehouseStream extends Model
         return $this->hasMany(DatawarehouseSchemaMigration::class, 'stream_id');
     }
 
+    // --- Status helpers ---
+
+    public function isOnboarding(): bool
+    {
+        return $this->status === 'onboarding';
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function isPaused(): bool
+    {
+        return $this->status === 'paused';
+    }
+
+    /**
+     * Backwards-compatible accessor: returns true when status is 'active'.
+     */
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function getSamplePayloadAttribute(): ?array
+    {
+        return $this->metadata['sample_payload'] ?? null;
+    }
+
     // --- Methods ---
 
     public function getDynamicTableName(): string
@@ -113,7 +145,12 @@ class DatawarehouseStream extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('status', 'active');
+    }
+
+    public function scopeOnboarding($query)
+    {
+        return $query->where('status', 'onboarding');
     }
 
     public function scopeForTeam($query, int $teamId)

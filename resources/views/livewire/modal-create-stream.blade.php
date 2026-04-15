@@ -13,6 +13,7 @@
                     @svg('heroicon-o-check-circle', 'w-6 h-6 text-green-600 shrink-0')
                     <div class="font-medium text-green-800">{{ $createdStreamName }} wurde erfolgreich angelegt.</div>
                 </div>
+                <p class="text-sm text-green-700 ml-9">Der Datenstrom befindet sich im Onboarding-Modus. Sende Testdaten, um die Felder zu konfigurieren.</p>
             </div>
 
             @if($source_type === 'webhook_post')
@@ -51,10 +52,7 @@
     @else
         {{-- Create Form --}}
         <div class="space-y-6">
-            {{-- Grunddaten --}}
             <div class="space-y-4">
-                <h4 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider">Grunddaten</h4>
-
                 <x-ui-input-text
                     name="name"
                     label="Name"
@@ -102,100 +100,10 @@
                 @endif
             </div>
 
-            {{-- Spalten-Definitionen --}}
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <h4 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider">Spalten</h4>
-                    <x-ui-button variant="secondary" size="sm" wire:click="addColumn">
-                        @svg('heroicon-o-plus', 'w-4 h-4 mr-1')
-                        Spalte
-                    </x-ui-button>
-                </div>
-
-                @error('columns')
-                    <div class="text-sm text-red-500">{{ $message }}</div>
-                @enderror
-
-                <div class="space-y-3">
-                    @foreach($columns as $index => $column)
-                        <div class="p-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-muted-5)]" wire:key="column-{{ $index }}">
-                            <div class="flex items-start gap-3">
-                                <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                    <div>
-                                        <label class="block text-xs text-[var(--ui-muted)] mb-1">Source-Key *</label>
-                                        <input type="text"
-                                            wire:model="columns.{{ $index }}.source_key"
-                                            placeholder="z.B. order_id"
-                                            class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-2 py-1.5 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
-                                        />
-                                        @error("columns.{$index}.source_key")
-                                            <div class="text-xs text-red-500 mt-1">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs text-[var(--ui-muted)] mb-1">Label *</label>
-                                        <input type="text"
-                                            wire:model="columns.{{ $index }}.label"
-                                            placeholder="z.B. Bestellnummer"
-                                            class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-2 py-1.5 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]"
-                                        />
-                                        @error("columns.{$index}.label")
-                                            <div class="text-xs text-red-500 mt-1">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs text-[var(--ui-muted)] mb-1">Datentyp</label>
-                                        <select wire:model="columns.{{ $index }}.data_type"
-                                            class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-2 py-1.5 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]">
-                                            <option value="string">String</option>
-                                            <option value="integer">Integer</option>
-                                            <option value="decimal">Decimal</option>
-                                            <option value="boolean">Boolean</option>
-                                            <option value="date">Date</option>
-                                            <option value="datetime">DateTime</option>
-                                            <option value="text">Text</option>
-                                            <option value="json">JSON</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-xs text-[var(--ui-muted)] mb-1">Transform</label>
-                                        <select wire:model="columns.{{ $index }}.transform"
-                                            class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-2 py-1.5 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]">
-                                            <option value="">Keine</option>
-                                            <option value="trim">Trim</option>
-                                            <option value="lowercase">Lowercase</option>
-                                            <option value="uppercase">Uppercase</option>
-                                            <option value="url_decode">URL Decode</option>
-                                            <option value="cast_german_decimal">Dt. Dezimal (1.234,56)</option>
-                                            <option value="strip_tags">Strip Tags</option>
-                                            <option value="to_integer">To Integer</option>
-                                            <option value="to_boolean">To Boolean</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-center gap-2 pt-5">
-                                    <label class="flex items-center gap-1 text-xs text-[var(--ui-muted)] cursor-pointer" title="Nullable">
-                                        <input type="checkbox" wire:model="columns.{{ $index }}.is_nullable" class="rounded border-[var(--ui-border)] text-[var(--ui-primary)]" />
-                                        N
-                                    </label>
-                                    <label class="flex items-center gap-1 text-xs text-[var(--ui-muted)] cursor-pointer" title="Indexed">
-                                        <input type="checkbox" wire:model="columns.{{ $index }}.is_indexed" class="rounded border-[var(--ui-border)] text-[var(--ui-primary)]" />
-                                        Idx
-                                    </label>
-
-                                    @if(count($columns) > 1)
-                                        <button wire:click="removeColumn({{ $index }})" class="p-1 text-[var(--ui-muted)] hover:text-red-500 transition-colors" title="Spalte entfernen">
-                                            @svg('heroicon-o-x-mark', 'w-4 h-4')
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+            <div class="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                <div class="flex items-start gap-2">
+                    @svg('heroicon-o-information-circle', 'w-5 h-5 text-blue-600 shrink-0 mt-0.5')
+                    <p class="text-sm text-blue-800">Die Spalten werden im nächsten Schritt konfiguriert, nachdem die ersten Daten eingegangen sind.</p>
                 </div>
             </div>
         </div>
@@ -204,8 +112,12 @@
     <x-slot name="footer">
         <div class="flex justify-end gap-3">
             @if($created)
-                <x-ui-button variant="primary" wire:click="close">
-                    Fertig
+                <x-ui-button variant="secondary" wire:click="close">
+                    Schließen
+                </x-ui-button>
+                <x-ui-button variant="primary" tag="a" href="{{ route('datawarehouse.stream.onboarding', $createdStreamId) }}">
+                    @svg('heroicon-o-cog-6-tooth', 'w-4 h-4 mr-1')
+                    Onboarding öffnen
                 </x-ui-button>
             @else
                 <x-ui-button variant="secondary" wire:click="close">

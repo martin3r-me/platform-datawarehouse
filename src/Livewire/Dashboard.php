@@ -26,10 +26,11 @@ class Dashboard extends Component
             ->get();
 
         $stats = [
-            'total'   => $streams->count(),
-            'active'  => $streams->where('is_active', true)->count(),
-            'success' => $streams->where('last_status', 'success')->count(),
-            'error'   => $streams->where('last_status', 'error')->count(),
+            'total'      => $streams->count(),
+            'active'     => $streams->where('status', 'active')->count(),
+            'onboarding' => $streams->where('status', 'onboarding')->count(),
+            'success'    => $streams->where('last_status', 'success')->count(),
+            'error'      => $streams->where('last_status', 'error')->count(),
         ];
 
         return view('datawarehouse::livewire.dashboard', [
