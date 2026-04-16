@@ -1,7 +1,9 @@
 <div>
-    <x-ui-modal :open="$open" @close="$wire.close()" size="lg">
-        <x-slot name="title">
-            {{ $editingId ? 'Verbindung bearbeiten' : 'Neue Verbindung' }}
+    <x-ui-modal size="lg" wire:model="open" :closeButton="true">
+        <x-slot name="header">
+            <h3 class="text-xl font-bold text-[var(--ui-secondary)]">
+                {{ $editingId ? 'Verbindung bearbeiten' : 'Neue Verbindung' }}
+            </h3>
         </x-slot>
 
         <div class="space-y-4 p-4">
