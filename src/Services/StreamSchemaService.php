@@ -13,6 +13,16 @@ class StreamSchemaService
 {
     /**
      * Create the dynamic table for a stream based on its column definitions.
+     *
+     * System columns added uniformly for all streams:
+     *   id, import_id, imported_at        (legacy, kept for BC)
+     *   _external_id, _synced_at,
+     *   _source_run_id, _row_hash         (all strategies)
+     *
+     * Strategy-specific:
+     *   snapshot → _snapshot_at
+     *   scd2     → _valid_from, _valid_to, _is_current
+     *   current/scd2 → _deleted_at
      */
     public function createTable(DatawarehouseStream $stream, ?int $userId = null): void
     {
@@ -23,13 +33,35 @@ class StreamSchemaService
             throw new \RuntimeException("Stream '{$stream->name}' has no columns defined.");
         }
 
+        $strategy = $stream->sync_strategy ?? 'append';
         $sql = null;
 
         try {
-            Schema::create($tableName, function (Blueprint $table) use ($columns) {
+            Schema::create($tableName, function (Blueprint $table) use ($columns, $strategy) {
                 $table->id();
+
+                // Legacy bookkeeping (kept so existing dashboards keep working).
                 $table->unsignedBigInteger('import_id')->nullable()->index();
                 $table->timestamp('imported_at')->nullable();
+
+                // Uniform system columns (all strategies).
+                $table->string('_external_id')->nullable()->index();
+                $table->timestamp('_synced_at')->nullable()->index();
+                $table->unsignedBigInteger('_source_run_id')->nullable()->index();
+                $table->char('_row_hash', 64)->nullable();
+
+                // Strategy-specific system columns.
+                if ($strategy === 'snapshot') {
+                    $table->timestamp('_snapshot_at')->nullable()->index();
+                }
+                if ($strategy === 'scd2') {
+                    $table->timestamp('_valid_from')->nullable()->index();
+                    $table->timestamp('_valid_to')->nullable();
+                    $table->boolean('_is_current')->default(true)->index();
+                }
+                if (in_array($strategy, ['current', 'scd2'], true)) {
+                    $table->timestamp('_deleted_at')->nullable()->index();
+                }
 
                 foreach ($columns as $col) {
                     $colDef = $col->toLaravelColumnType();

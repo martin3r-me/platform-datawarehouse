@@ -24,6 +24,10 @@ class DatawarehouseStream extends Model
         'source_type',
         'frequency',
         'mode',
+        'sync_strategy',
+        'natural_key',
+        'change_detection',
+        'soft_delete',
         'upsert_key',
         'endpoint_token',
         'pull_url',
@@ -38,10 +42,12 @@ class DatawarehouseStream extends Model
     ];
 
     protected $casts = [
-        'pull_headers'  => 'array',
-        'metadata'      => 'array',
-        'table_created' => 'boolean',
-        'last_run_at'   => 'datetime',
+        'pull_headers'     => 'array',
+        'metadata'         => 'array',
+        'table_created'    => 'boolean',
+        'change_detection' => 'boolean',
+        'soft_delete'      => 'boolean',
+        'last_run_at'      => 'datetime',
     ];
 
     protected static function booted(): void
@@ -139,6 +145,36 @@ class DatawarehouseStream extends Model
     public function isManual(): bool
     {
         return $this->source_type === 'manual';
+    }
+
+    // --- Sync-Strategy helpers ---
+
+    public function isAppendStrategy(): bool
+    {
+        return $this->sync_strategy === 'append';
+    }
+
+    public function isCurrentStrategy(): bool
+    {
+        return $this->sync_strategy === 'current';
+    }
+
+    public function isSnapshotStrategy(): bool
+    {
+        return $this->sync_strategy === 'snapshot';
+    }
+
+    public function isScd2Strategy(): bool
+    {
+        return $this->sync_strategy === 'scd2';
+    }
+
+    /**
+     * True when the strategy requires a natural_key (current or scd2).
+     */
+    public function strategyRequiresKey(): bool
+    {
+        return in_array($this->sync_strategy, ['current', 'scd2'], true);
     }
 
     // --- Scopes ---

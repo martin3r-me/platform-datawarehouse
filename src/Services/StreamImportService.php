@@ -2,7 +2,6 @@
 
 namespace Platform\Datawarehouse\Services;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseImport;
@@ -11,6 +10,7 @@ class StreamImportService
 {
     public function __construct(
         protected StreamSchemaService $schemaService,
+        protected ImportWriter $writer,
     ) {}
 
     /**
@@ -55,11 +55,21 @@ class StreamImportService
         ]);
 
         try {
-            $result = match ($stream->mode) {
-                'snapshot' => $this->importSnapshot($stream, $rows, $import),
-                'append'   => $this->importAppend($stream, $rows, $import),
-                'upsert'   => $this->importUpsert($stream, $rows, $import),
-            };
+            // Map raw rows to DB columns once, then hand off to the strategy writer.
+            $columnMap = $stream->columns()->where('is_active', true)->get()->keyBy('source_key');
+            $mappedRows = [];
+            $mapErrors = [];
+            foreach ($rows as $index => $row) {
+                try {
+                    $mappedRows[] = $this->mapRow($row, $columnMap);
+                } catch (\Throwable $e) {
+                    $mapErrors[] = ['row' => $index, 'message' => $e->getMessage()];
+                }
+            }
+
+            $result = $this->writer->write($stream, $mappedRows, $import);
+            $result['skipped'] += count($mapErrors);
+            $result['errors'] = array_merge($mapErrors, $result['errors'] ?? []);
 
             $durationMs = (int) ((microtime(true) - $startTime) * 1000);
 
@@ -94,107 +104,6 @@ class StreamImportService
         }
 
         return $import;
-    }
-
-    protected function importSnapshot(DatawarehouseStream $stream, array $rows, DatawarehouseImport $import): array
-    {
-        $tableName = $stream->getDynamicTableName();
-
-        DB::table($tableName)->truncate();
-
-        return $this->insertRows($stream, $rows, $import);
-    }
-
-    protected function importAppend(DatawarehouseStream $stream, array $rows, DatawarehouseImport $import): array
-    {
-        return $this->insertRows($stream, $rows, $import);
-    }
-
-    protected function importUpsert(DatawarehouseStream $stream, array $rows, DatawarehouseImport $import): array
-    {
-        if (empty($stream->upsert_key)) {
-            throw new \RuntimeException("Upsert mode requires an upsert_key to be set.");
-        }
-
-        $tableName = $stream->getDynamicTableName();
-        $columns = $stream->columns()->where('is_active', true)->get();
-        $columnMap = $columns->keyBy('source_key');
-        $upsertKey = $stream->upsert_key;
-
-        $imported = 0;
-        $skipped = 0;
-        $errors = [];
-
-        foreach ($rows as $index => $row) {
-            try {
-                $mapped = $this->mapRow($row, $columnMap);
-                $mapped['import_id'] = $import->id;
-                $mapped['imported_at'] = now();
-
-                $keyColumn = $columnMap->get($upsertKey)?->column_name ?? $upsertKey;
-
-                if (!isset($mapped[$keyColumn])) {
-                    $skipped++;
-                    $errors[] = ['row' => $index, 'message' => "Missing upsert key '{$upsertKey}'"];
-                    continue;
-                }
-
-                // Columns to update (all mapped columns except the upsert key)
-                $updateColumns = array_keys($mapped);
-
-                DB::table($tableName)->upsert(
-                    [$mapped],
-                    [$keyColumn],
-                    $updateColumns,
-                );
-
-                $imported++;
-            } catch (\Throwable $e) {
-                $skipped++;
-                $errors[] = ['row' => $index, 'message' => $e->getMessage()];
-            }
-        }
-
-        return ['imported' => $imported, 'skipped' => $skipped, 'errors' => $errors];
-    }
-
-    protected function insertRows(DatawarehouseStream $stream, array $rows, DatawarehouseImport $import): array
-    {
-        $tableName = $stream->getDynamicTableName();
-        $columns = $stream->columns()->where('is_active', true)->get();
-        $columnMap = $columns->keyBy('source_key');
-
-        $imported = 0;
-        $skipped = 0;
-        $errors = [];
-
-        // Insert in chunks for performance
-        $chunks = array_chunk($rows, 500);
-
-        foreach ($chunks as $chunk) {
-            $insertData = [];
-
-            foreach ($chunk as $index => $row) {
-                try {
-                    $mapped = $this->mapRow($row, $columnMap);
-                    $mapped['import_id'] = $import->id;
-                    $mapped['imported_at'] = now();
-                    $mapped['created_at'] = now();
-                    $mapped['updated_at'] = now();
-                    $insertData[] = $mapped;
-                    $imported++;
-                } catch (\Throwable $e) {
-                    $skipped++;
-                    $errors[] = ['row' => $index, 'message' => $e->getMessage()];
-                }
-            }
-
-            if (!empty($insertData)) {
-                DB::table($tableName)->insert($insertData);
-            }
-        }
-
-        return ['imported' => $imported, 'skipped' => $skipped, 'errors' => $errors];
     }
 
     /**

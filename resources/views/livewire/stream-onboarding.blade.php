@@ -121,6 +121,63 @@
                     </div>
                 </x-ui-panel>
 
+                {{-- Sync Strategy --}}
+                <x-ui-panel title="Speicher-Strategie" subtitle="Wie sollen die Daten über die Zeit gespeichert werden?">
+                    <div class="p-4 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                            @php
+                                $strategies = [
+                                    'append'   => ['Append',   'Jede Zeile wird neu eingefügt. Kein Upsert, keine Historie. Gut für Event-Logs.'],
+                                    'current'  => ['Current',  'Upsert per Schlüssel. Tabelle spiegelt den aktuellen Stand der Quelle.'],
+                                    'snapshot' => ['Snapshot', 'Jeder Lauf legt alle Zeilen mit _snapshot_at ab. Point-in-Time-Abfragen.'],
+                                    'scd2'     => ['SCD2',     'Versionierte Historie. Änderungen schließen alte Version, neue Zeile mit valid_from.'],
+                                ];
+                            @endphp
+                            @foreach($strategies as $key => [$label, $desc])
+                                <label class="block cursor-pointer rounded-lg border p-3 transition-all
+                                    {{ $syncStrategy === $key ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/5' : 'border-[var(--ui-border)] hover:bg-[var(--ui-muted-5)]' }}">
+                                    <div class="flex items-center gap-2">
+                                        <input type="radio" wire:model.live="syncStrategy" value="{{ $key }}"
+                                            class="text-[var(--ui-primary)] focus:ring-[var(--ui-primary)]" />
+                                        <span class="font-medium text-sm text-[var(--ui-secondary)]">{{ $label }}</span>
+                                    </div>
+                                    <p class="text-xs text-[var(--ui-muted)] mt-1">{{ $desc }}</p>
+                                </label>
+                            @endforeach
+                        </div>
+
+                        @if(in_array($syncStrategy, ['current', 'scd2']))
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-[var(--ui-border)]">
+                                <div>
+                                    <label class="block text-xs text-[var(--ui-muted)] mb-1">Natürlicher Schlüssel *</label>
+                                    <select wire:model.live="naturalKeyField"
+                                        class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-2 py-1.5 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)]">
+                                        <option value="">— wählen —</option>
+                                        @foreach($fields as $f)
+                                            <option value="{{ $f['source_key'] }}">{{ $f['source_key'] }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('naturalKeyField')
+                                        <div class="text-xs text-red-600 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="space-y-2 pt-5">
+                                    <label class="flex items-center gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
+                                        <input type="checkbox" wire:model="changeDetection"
+                                            class="rounded border-[var(--ui-border)] text-[var(--ui-primary)]" />
+                                        Change-Detection (Hash) aktivieren
+                                    </label>
+                                    <label class="flex items-center gap-2 text-sm text-[var(--ui-secondary)] cursor-pointer">
+                                        <input type="checkbox" wire:model="softDelete"
+                                            class="rounded border-[var(--ui-border)] text-[var(--ui-primary)]" />
+                                        Soft-Delete bei fehlenden Zeilen
+                                    </label>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </x-ui-panel>
+
                 {{-- Field Configuration --}}
                 <x-ui-panel title="Feld-Konfiguration" subtitle="Wähle die Felder aus und konfiguriere sie">
                     <div class="p-4 space-y-3">

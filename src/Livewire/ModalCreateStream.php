@@ -65,16 +65,26 @@ class ModalCreateStream extends Component
         $user = Auth::user();
         $team = $user->currentTeam;
 
+        // Derive a reasonable default sync_strategy from the legacy mode field.
+        // This can be fine-tuned in the onboarding step.
+        $syncStrategy = match ($this->mode) {
+            'upsert'   => 'current',
+            'snapshot' => 'snapshot',
+            default    => 'append',
+        };
+
         $stream = DatawarehouseStream::create([
-            'team_id'     => $team->id,
-            'user_id'     => $user->id,
-            'name'        => $this->name,
-            'slug'        => Str::slug($this->name),
-            'description' => $this->description ?: null,
-            'source_type' => $this->source_type,
-            'mode'        => $this->mode,
-            'upsert_key'  => $this->mode === 'upsert' ? $this->upsert_key : null,
-            'status'      => 'onboarding',
+            'team_id'       => $team->id,
+            'user_id'       => $user->id,
+            'name'          => $this->name,
+            'slug'          => Str::slug($this->name),
+            'description'   => $this->description ?: null,
+            'source_type'   => $this->source_type,
+            'mode'          => $this->mode,
+            'sync_strategy' => $syncStrategy,
+            'upsert_key'    => $this->mode === 'upsert' ? $this->upsert_key : null,
+            'natural_key'   => $this->mode === 'upsert' ? $this->upsert_key : null,
+            'status'        => 'onboarding',
         ]);
 
         // Switch to success view with webhook URL

@@ -19,6 +19,12 @@ class StreamOnboarding extends Component
     public array $fields = [];
     public bool $activating = false;
 
+    // Strategy configuration
+    public string $syncStrategy = 'append';
+    public ?string $naturalKeyField = null;
+    public bool $changeDetection = true;
+    public bool $softDelete = false;
+
     public function mount(DatawarehouseStream $stream): void
     {
         $user = Auth::user();
@@ -28,7 +34,20 @@ class StreamOnboarding extends Component
         abort_unless($stream->isOnboarding(), 404);
 
         $this->stream = $stream;
+        $this->syncStrategy = $stream->sync_strategy ?: 'append';
+        $this->naturalKeyField = $stream->natural_key;
+        $this->changeDetection = $stream->change_detection ?? true;
+        $this->softDelete = $stream->soft_delete ?? false;
         $this->buildFieldsFromSample();
+    }
+
+    public function updatedSyncStrategy(): void
+    {
+        // Snapshot/append never need soft-delete; reset for clarity.
+        if (!in_array($this->syncStrategy, ['current', 'scd2'], true)) {
+            $this->softDelete = false;
+            $this->naturalKeyField = null;
+        }
     }
 
     public function buildFieldsFromSample(): void
@@ -76,6 +95,32 @@ class StreamOnboarding extends Component
             $this->activating = false;
             return;
         }
+
+        // Validate strategy requirements
+        if (in_array($this->syncStrategy, ['current', 'scd2'], true)) {
+            if (!$this->naturalKeyField) {
+                $this->addError('naturalKeyField', 'Für die gewählte Strategie muss ein natürlicher Schlüssel ausgewählt werden.');
+                $this->activating = false;
+                return;
+            }
+            $keyIsSelected = $selectedFields->contains(fn ($f) => $f['source_key'] === $this->naturalKeyField);
+            if (!$keyIsSelected) {
+                $this->addError('naturalKeyField', 'Das Schlüssel-Feld muss unter den übernommenen Feldern sein.');
+                $this->activating = false;
+                return;
+            }
+        }
+
+        // Persist strategy settings on the stream BEFORE table creation,
+        // because SchemaService::createTable inspects sync_strategy for meta columns.
+        $this->stream->update([
+            'sync_strategy'    => $this->syncStrategy,
+            'natural_key'      => $this->naturalKeyField
+                ? Str::snake($this->naturalKeyField)  // map source_key → column_name
+                : null,
+            'change_detection' => $this->changeDetection,
+            'soft_delete'      => $this->softDelete,
+        ]);
 
         // Create columns
         foreach ($selectedFields as $field) {
