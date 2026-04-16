@@ -111,15 +111,23 @@ class LexofficeProvider implements PullProvider
             $query['voucherStatus'] = 'any';
 
             // Incremental: only rows updated on/after $since.
-            // Lexoffice wants ISO 8601 with milliseconds. We send it in UTC
-            // with a "Z" suffix instead of a "+HH:MM" offset, because the
-            // plus sign is query-string-ambiguous (gets interpreted as a
-            // space by naive parsers) and Lexoffice rejects both
-            // "2026-04-16T07:54:03+02:00" and "2026-04-16T07:54:03.000+02:00"
-            // in practice. UTC + Z avoids the ambiguity entirely.
+            //
+            // The /voucherlist endpoint is an undocumented-quirk case: unlike
+            // the rest of the Lexoffice API (which accepts ISO 8601 datetime
+            // with millisecond precision), voucherlist ONLY accepts a bare
+            // date ("Y-m-d"). Both "...T07:54:03.000+02:00" and
+            // "...T05:54:03.000Z" get rejected with HTTP 400
+            // "Invalid value ... for request parameter 'updatedDateFrom'".
+            // Reference: the Sysix/lexoffice-php-api client also serializes
+            // voucherlist date params as "Y-m-d" for the same reason.
+            //
+            // Consequence: we operate at day granularity. We use Berlin local
+            // time to pick the correct calendar day (server TZ may be UTC).
+            // Row hashing / natural-key upserts deduplicate any same-day
+            // re-fetches on the writer side.
             if ($context->incremental && $context->since) {
-                $utc = (clone $context->since)->setTimezone(new \DateTimeZone('UTC'));
-                $query['updatedDateFrom'] = $utc->format('Y-m-d\TH:i:s.v\Z');
+                $berlin = (clone $context->since)->setTimezone(new \DateTimeZone('Europe/Berlin'));
+                $query['updatedDateFrom'] = $berlin->format('Y-m-d');
             }
         }
 
