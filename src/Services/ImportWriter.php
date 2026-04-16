@@ -6,6 +6,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Platform\Datawarehouse\Models\DatawarehouseImport;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 
@@ -23,6 +24,9 @@ use Platform\Datawarehouse\Models\DatawarehouseStream;
  */
 class ImportWriter
 {
+    /** In-memory cache of table → column-list. */
+    protected array $columnCache = [];
+
     /**
      * Persist the given already-mapped rows into the stream's dynamic table.
      *
@@ -90,7 +94,9 @@ class ImportWriter
         $keyCol = $this->requireNaturalKey($stream);
         $table = $stream->getDynamicTableName();
         $now = Carbon::now();
-        $detect = (bool) ($stream->change_detection ?? true);
+        $detect = (bool) ($stream->change_detection ?? true)
+            && $this->tableHasColumn($table, '_external_id')
+            && $this->tableHasColumn($table, '_row_hash');
 
         $imported = 0;
         $skipped = 0;
@@ -134,11 +140,16 @@ class ImportWriter
                     '_deleted_at'  => null,
                 ]);
 
-                DB::table($table)->upsert(
-                    [$payload],
-                    ['_external_id'],
-                    array_keys($payload),
-                );
+                if ($this->tableHasColumn($table, '_external_id')) {
+                    DB::table($table)->upsert(
+                        [$payload],
+                        ['_external_id'],
+                        array_keys($payload),
+                    );
+                } else {
+                    // Legacy table without system columns: fall back to append.
+                    DB::table($table)->insert($payload);
+                }
 
                 $imported++;
             } catch (\Throwable $e) {
@@ -196,6 +207,17 @@ class ImportWriter
         $keyCol = $this->requireNaturalKey($stream);
         $table = $stream->getDynamicTableName();
         $now = Carbon::now();
+
+        // SCD2 requires a schema-level upgrade: the meta columns must exist.
+        // Fail loud rather than silently losing history.
+        foreach (['_external_id', '_row_hash', '_is_current', '_valid_from', '_valid_to'] as $col) {
+            if (!$this->tableHasColumn($table, $col)) {
+                throw new \RuntimeException(
+                    "Table '{$table}' is missing system column '{$col}' required for scd2. ".
+                    "Run 'php artisan datawarehouse:upgrade-schema {$stream->id}' first."
+                );
+            }
+        }
 
         $imported = 0;
         $skipped = 0;
@@ -286,20 +308,30 @@ class ImportWriter
         }
 
         $table = $stream->getDynamicTableName();
+
+        // Silently skip if the legacy table lacks the meta columns; soft-
+        // delete simply does nothing rather than crashing an otherwise
+        // successful pull.
+        if (!$this->tableHasColumn($table, '_deleted_at') || !$this->tableHasColumn($table, '_external_id')) {
+            return 0;
+        }
+
         $now = Carbon::now();
 
         $query = DB::table($table)->whereNull('_deleted_at');
-        if ($stream->isScd2Strategy()) {
+        if ($stream->isScd2Strategy() && $this->tableHasColumn($table, '_is_current')) {
             $query->where('_is_current', true);
         }
         if (!empty($seenExternalIds)) {
             $query->whereNotIn('_external_id', array_unique(array_filter($seenExternalIds, fn ($v) => $v !== null && $v !== '')));
         }
 
-        return $query->update([
-            '_deleted_at' => $now,
-            'updated_at'  => $now,
-        ]);
+        $update = ['_deleted_at' => $now];
+        if ($this->tableHasColumn($table, 'updated_at')) {
+            $update['updated_at'] = $now;
+        }
+
+        return $query->update($update);
     }
 
     // -----------------------------------------------------------------
@@ -307,7 +339,10 @@ class ImportWriter
     // -----------------------------------------------------------------
 
     /**
-     * Merge user columns with system columns + legacy bookkeeping fields.
+     * Merge user columns with system columns + legacy bookkeeping fields,
+     * then filter the result to columns that actually exist on the target
+     * table. This makes the writer forward-compatible with legacy tables
+     * created before the system-column expansion.
      */
     protected function withSystemCols(array $row, DatawarehouseStream $stream, DatawarehouseImport $import, Carbon $now, array $overrides = []): array
     {
@@ -320,7 +355,38 @@ class ImportWriter
             'updated_at'      => $now,
         ];
 
-        return array_merge($base, $row, $overrides);
+        $merged = array_merge($base, $row, $overrides);
+
+        return $this->filterToTableColumns($stream->getDynamicTableName(), $merged);
+    }
+
+    /**
+     * Intersect a row with the actual column set of the target table so we
+     * never try to insert into a column that does not exist. Also useful for
+     * upsert column lists.
+     */
+    protected function filterToTableColumns(string $table, array $row): array
+    {
+        $cols = $this->getTableColumns($table);
+        if (empty($cols)) {
+            return $row;
+        }
+        return array_intersect_key($row, array_flip($cols));
+    }
+
+    protected function getTableColumns(string $table): array
+    {
+        if (!isset($this->columnCache[$table])) {
+            $this->columnCache[$table] = Schema::hasTable($table)
+                ? Schema::getColumnListing($table)
+                : [];
+        }
+        return $this->columnCache[$table];
+    }
+
+    protected function tableHasColumn(string $table, string $column): bool
+    {
+        return in_array($column, $this->getTableColumns($table), true);
     }
 
     /**
