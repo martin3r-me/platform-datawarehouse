@@ -194,6 +194,13 @@ class PullStreamService
         foreach ($columnMap as $sourceKey => $column) {
             $value = data_get($row, $sourceKey);
             $value = $column->applyTransform($value);
+
+            // See StreamImportService::mapRow — nested structures are
+            // JSON-serialized so they can be bound to scalar columns.
+            if ($value !== null && (is_array($value) || is_object($value))) {
+                $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+
             $mapped[$column->column_name] = $value;
         }
         return $mapped;

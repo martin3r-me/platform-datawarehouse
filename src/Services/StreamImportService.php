@@ -116,6 +116,15 @@ class StreamImportService
         foreach ($columnMap as $sourceKey => $column) {
             $value = data_get($row, $sourceKey);
             $value = $column->applyTransform($value);
+
+            // Nested structures (arrays / stdClass) can't be bound to scalar
+            // columns, so we serialize them to JSON. For data_type=json this
+            // produces a valid JSON literal; for string/text columns it
+            // prevents "Array to string conversion" errors.
+            if ($value !== null && (is_array($value) || is_object($value))) {
+                $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+
             $mapped[$column->column_name] = $value;
         }
 
