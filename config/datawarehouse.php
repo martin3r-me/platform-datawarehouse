@@ -25,5 +25,15 @@ return [
                 ],
             ],
         ],
+        [
+            'group' => 'Quellen',
+            'items' => [
+                [
+                    'label' => 'Verbindungen',
+                    'route' => 'datawarehouse.connections',
+                    'icon'  => 'heroicon-o-link',
+                ],
+            ],
+        ],
     ],
 ];

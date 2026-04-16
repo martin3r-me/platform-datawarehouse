@@ -47,6 +47,13 @@
   -d '[{"key1": "value1", "key2": 42}]'</pre>
                     </div>
                 </div>
+            @elseif($source_type === 'pull_get')
+                <div class="space-y-3">
+                    <h4 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider">Pull-Stream</h4>
+                    <p class="text-sm text-[var(--ui-muted)]">
+                        Du kannst einen ersten Pull manuell aus der Stream-Detail-Seite starten, um Sample-Daten zu erhalten. Danach lassen sich die Felder im Onboarding konfigurieren.
+                    </p>
+                </div>
             @endif
         </div>
     @else
@@ -97,6 +104,81 @@
                         placeholder="z.B. id oder order_number"
                         required
                     />
+                @endif
+
+                @if($source_type === 'pull_get')
+                    <div class="pt-4 mt-2 border-t border-[var(--ui-border)] space-y-4">
+                        <h4 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider">Pull-Konfiguration</h4>
+
+                        @if($this->connections->isEmpty())
+                            <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
+                                Noch keine aktive Verbindung vorhanden. Lege zuerst eine
+                                <a href="{{ route('datawarehouse.connections') }}" class="underline font-medium">Verbindung</a> an.
+                            </div>
+                        @else
+                            <div>
+                                <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Verbindung *</label>
+                                <select wire:model.live="connection_id"
+                                    class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
+                                    <option value="">— wählen —</option>
+                                    @foreach($this->connections as $conn)
+                                        <option value="{{ $conn->id }}">{{ $conn->name }} ({{ $conn->provider_key }})</option>
+                                    @endforeach
+                                </select>
+                                @error('connection_id')
+                                    <div class="text-xs text-red-600 mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            @if($connection_id && !empty($this->endpoints))
+                                <div>
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Endpoint *</label>
+                                    <select wire:model.live="endpoint_key"
+                                        class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
+                                        <option value="">— wählen —</option>
+                                        @foreach($this->endpoints as $ep)
+                                            <option value="{{ $ep->key }}">{{ $ep->label }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('endpoint_key')
+                                        <div class="text-xs text-red-600 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endif
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Frequenz *</label>
+                                    <select wire:model="pull_schedule"
+                                        class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
+                                        <option value="every_minute">Jede Minute</option>
+                                        <option value="every_5_min">Alle 5 Minuten</option>
+                                        <option value="every_15_min">Alle 15 Minuten</option>
+                                        <option value="hourly">Stündlich</option>
+                                        <option value="daily">Täglich</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Pull-Modus *</label>
+                                    <select wire:model.live="pull_mode"
+                                        class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
+                                        <option value="full">Vollständig</option>
+                                        <option value="incremental">Inkrementell</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            @if($pull_mode === 'incremental')
+                                <x-ui-input-text
+                                    name="incremental_field"
+                                    label="Inkrementelles Feld (z.B. updated_at)"
+                                    wire:model="incremental_field"
+                                    placeholder="updated_at"
+                                    required
+                                />
+                            @endif
+                        @endif
+                    </div>
                 @endif
             </div>
 

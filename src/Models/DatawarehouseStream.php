@@ -22,6 +22,14 @@ class DatawarehouseStream extends Model
         'slug',
         'description',
         'source_type',
+        'connection_id',
+        'endpoint_key',
+        'pull_config',
+        'pull_schedule',
+        'pull_mode',
+        'incremental_field',
+        'last_cursor',
+        'last_pull_at',
         'frequency',
         'mode',
         'sync_strategy',
@@ -43,11 +51,14 @@ class DatawarehouseStream extends Model
 
     protected $casts = [
         'pull_headers'     => 'array',
+        'pull_config'      => 'array',
+        'last_cursor'      => 'array',
         'metadata'         => 'array',
         'table_created'    => 'boolean',
         'change_detection' => 'boolean',
         'soft_delete'      => 'boolean',
         'last_run_at'      => 'datetime',
+        'last_pull_at'     => 'datetime',
     ];
 
     protected static function booted(): void
@@ -93,6 +104,11 @@ class DatawarehouseStream extends Model
     public function schemaMigrations(): HasMany
     {
         return $this->hasMany(DatawarehouseSchemaMigration::class, 'stream_id');
+    }
+
+    public function connection(): BelongsTo
+    {
+        return $this->belongsTo(DatawarehouseConnection::class, 'connection_id');
     }
 
     // --- Status helpers ---

@@ -3,10 +3,10 @@
 namespace Platform\Datawarehouse\Livewire;
 
 use Livewire\Component;
-use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Platform\Datawarehouse\Jobs\PullStreamJob;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 
 class StreamDetail extends Component
@@ -14,6 +14,8 @@ class StreamDetail extends Component
     public DatawarehouseStream $stream;
 
     public string $activeTab = 'overview';
+
+    public ?string $flash = null;
 
     public function mount(DatawarehouseStream $stream): void
     {
@@ -61,6 +63,20 @@ class StreamDetail extends Component
         }
     }
 
+    public function triggerPull(): void
+    {
+        if (!$this->stream->isPull()) {
+            return;
+        }
+        if (!$this->stream->connection_id || !$this->stream->endpoint_key) {
+            $this->flash = 'Pull-Konfiguration unvollständig (Verbindung/Endpoint fehlen).';
+            return;
+        }
+
+        PullStreamJob::dispatch($this->stream->id, Auth::id());
+        $this->flash = 'Pull-Run wurde in die Queue gestellt.';
+    }
+
     public function render()
     {
         $imports = $this->stream->imports()
@@ -82,11 +98,14 @@ class StreamDetail extends Component
                 ->get();
         }
 
+        $connection = $this->stream->isPull() ? $this->stream->connection : null;
+
         return view('datawarehouse::livewire.stream-detail', [
             'imports'    => $imports,
             'columns'    => $columns,
             'rowCount'   => $rowCount,
             'latestRows' => $latestRows,
+            'connection' => $connection,
         ])->layout('platform::layouts.app');
     }
 }

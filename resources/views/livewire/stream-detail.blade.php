@@ -189,14 +189,55 @@
 
                     @if($stream->isPull())
                         <x-ui-panel title="Pull-Konfiguration">
-                            <div class="p-4 space-y-3 text-sm">
-                                <div>
-                                    <div class="text-xs text-[var(--ui-muted)]">URL</div>
-                                    <div class="font-mono text-[var(--ui-secondary)] break-all">{{ $stream->pull_url ?? '—' }}</div>
+                            <div class="p-4 space-y-4 text-sm">
+                                @if($flash)
+                                    <div class="p-2 rounded bg-blue-50 border border-blue-200 text-blue-800 text-xs">{{ $flash }}</div>
+                                @endif
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div>
+                                        <div class="text-xs text-[var(--ui-muted)]">Verbindung</div>
+                                        <div class="font-medium text-[var(--ui-secondary)]">
+                                            {{ $connection?->name ?? '—' }}
+                                            @if($connection)
+                                                <span class="text-xs text-[var(--ui-muted)]">({{ $connection->provider_key }})</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-[var(--ui-muted)]">Endpoint</div>
+                                        <div class="font-mono text-[var(--ui-secondary)]">{{ $stream->endpoint_key ?? '—' }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-[var(--ui-muted)]">Frequenz</div>
+                                        <div class="text-[var(--ui-secondary)]">{{ $stream->pull_schedule ?? '—' }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-[var(--ui-muted)]">Pull-Modus</div>
+                                        <div class="text-[var(--ui-secondary)]">
+                                            {{ $stream->pull_mode ?? '—' }}
+                                            @if($stream->pull_mode === 'incremental' && $stream->incremental_field)
+                                                <span class="text-xs text-[var(--ui-muted)] font-mono">({{ $stream->incremental_field }})</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs text-[var(--ui-muted)]">Letzter Pull</div>
+                                        <div class="text-[var(--ui-secondary)]">
+                                            {{ $stream->last_pull_at ? $stream->last_pull_at->diffForHumans() : '—' }}
+                                        </div>
+                                    </div>
+                                    <div class="col-span-1 lg:col-span-3">
+                                        <div class="text-xs text-[var(--ui-muted)]">Letzter Cursor</div>
+                                        <div class="font-mono text-xs text-[var(--ui-secondary)] break-all">
+                                            {{ $stream->last_cursor ? json_encode($stream->last_cursor, JSON_UNESCAPED_UNICODE) : '—' }}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div class="text-xs text-[var(--ui-muted)]">Frequenz</div>
-                                    <div class="text-[var(--ui-secondary)]">{{ $stream->frequency ?? '—' }}</div>
+                                <div class="flex items-center gap-2 pt-2 border-t border-[var(--ui-border)]">
+                                    <x-ui-button variant="primary" size="sm" wire:click="triggerPull">
+                                        @svg('heroicon-o-arrow-down-tray', 'w-4 h-4 mr-1')
+                                        Pull jetzt starten
+                                    </x-ui-button>
                                 </div>
                             </div>
                         </x-ui-panel>

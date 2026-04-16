@@ -2,12 +2,16 @@
 
 namespace Platform\Datawarehouse;
 
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Platform\Core\PlatformCore;
 use Platform\Core\Routing\ModuleRouter;
+use Platform\Datawarehouse\Console\Commands\DispatchPullStreamsCommand;
+use Platform\Datawarehouse\Providers\ProviderRegistry;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -16,6 +20,9 @@ class DatawarehouseServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/datawarehouse.php', 'datawarehouse');
+
+        // ProviderRegistry is a singleton so all providers register into the same instance.
+        $this->app->singleton(ProviderRegistry::class);
     }
 
     public function boot(): void
@@ -55,6 +62,21 @@ class DatawarehouseServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'datawarehouse');
 
         $this->registerLivewireComponents();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                DispatchPullStreamsCommand::class,
+            ]);
+
+            // Run the dispatcher every minute; it handles per-stream schedule gating.
+            $this->app->booted(function () {
+                $schedule = $this->app->make(Schedule::class);
+                $schedule->command('datawarehouse:dispatch-pulls')
+                    ->everyMinute()
+                    ->withoutOverlapping(5)
+                    ->runInBackground();
+            });
+        }
     }
 
     protected function registerLivewireComponents(): void
