@@ -70,27 +70,118 @@ class DataTypeDetector
 
     /**
      * Detect types for all keys in a sample payload.
+     *
+     * Examines EVERY row in the payload (not just the first) and reconciles
+     * the per-row types into a single safe type per key. This prevents
+     * mis-detections when the first sample value happens to be numeric but
+     * later rows contain alphanumeric strings (e.g. a "kostenstelle" field
+     * that contains both "1234" and "ABL").
+     *
      * Returns ['key' => 'type', ...].
      */
     public static function detectFromPayload(array $payload): array
     {
-        // Normalize: if array of rows, use first row
-        $row = (isset($payload[0]) && is_array($payload[0])) ? $payload[0] : $payload;
+        $rows = self::extractRows($payload);
+        if (empty($rows)) {
+            return [];
+        }
 
-        // Unwrap common wrapper keys
-        foreach (['data', 'rows', 'items', 'records'] as $wrapper) {
-            if (isset($row[$wrapper]) && is_array($row[$wrapper])) {
-                $inner = $row[$wrapper];
-                $row = (isset($inner[0]) && is_array($inner[0])) ? $inner[0] : $inner;
-                break;
+        // Collect all distinct non-null types observed per key.
+        $typesPerKey = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            foreach ($row as $key => $value) {
+                // Skip null / empty-string samples: they carry no type info.
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                $typesPerKey[$key][self::detect($value)] = true;
             }
         }
 
-        $types = [];
-        foreach ($row as $key => $value) {
-            $types[$key] = self::detect($value);
+        // Preserve the key order of the first row; include any keys that
+        // only appeared in later rows at the end.
+        $firstRow = is_array($rows[0] ?? null) ? $rows[0] : [];
+        $orderedKeys = array_values(array_unique(array_merge(
+            array_keys($firstRow),
+            array_keys($typesPerKey),
+        )));
+
+        $result = [];
+        foreach ($orderedKeys as $key) {
+            $observed = array_keys($typesPerKey[$key] ?? []);
+            $result[$key] = self::reconcileTypes($observed);
         }
 
-        return $types;
+        return $result;
+    }
+
+    /**
+     * Unwrap a payload into a list of row arrays.
+     *
+     *   [{...}, {...}]             → list of rows
+     *   {data: [{...}]}            → list of rows (also 'rows', 'items', 'records')
+     *   {foo: 1, bar: 2}           → single-row list
+     */
+    protected static function extractRows(array $payload): array
+    {
+        // Already a list of rows.
+        if (isset($payload[0]) && is_array($payload[0])) {
+            return $payload;
+        }
+
+        // Unwrap common wrapper keys.
+        foreach (['data', 'rows', 'items', 'records'] as $wrapper) {
+            if (isset($payload[$wrapper]) && is_array($payload[$wrapper])) {
+                $inner = $payload[$wrapper];
+                if (isset($inner[0]) && is_array($inner[0])) {
+                    return $inner;
+                }
+                return [$inner];
+            }
+        }
+
+        // Treat as a single row.
+        return [$payload];
+    }
+
+    /**
+     * Reduce a set of observed types into a single safe target type.
+     *
+     * Compatible widenings:
+     *   {integer, decimal}         → decimal
+     *   {date, datetime}           → datetime
+     *   {string, text}             → text
+     *
+     * Anything else conflicting falls back to 'string'.
+     */
+    protected static function reconcileTypes(array $types): string
+    {
+        if (empty($types)) {
+            return 'string';
+        }
+        if (count($types) === 1) {
+            return $types[0];
+        }
+
+        // Numeric widening.
+        if (count(array_diff($types, ['integer', 'decimal'])) === 0) {
+            return 'decimal';
+        }
+
+        // Temporal widening.
+        if (count(array_diff($types, ['date', 'datetime'])) === 0) {
+            return 'datetime';
+        }
+
+        // Textual widening.
+        if (count(array_diff($types, ['string', 'text'])) === 0) {
+            return 'text';
+        }
+
+        // Mixed / incompatible — string is the safest container.
+        return 'string';
     }
 }
