@@ -111,10 +111,15 @@ class LexofficeProvider implements PullProvider
             $query['voucherStatus'] = 'any';
 
             // Incremental: only rows updated on/after $since.
-            // Lexoffice requires ISO 8601 WITH milliseconds (RFC3339_EXTENDED);
-            // plain DATE_ATOM without ms is rejected with HTTP 400.
+            // Lexoffice wants ISO 8601 with milliseconds. We send it in UTC
+            // with a "Z" suffix instead of a "+HH:MM" offset, because the
+            // plus sign is query-string-ambiguous (gets interpreted as a
+            // space by naive parsers) and Lexoffice rejects both
+            // "2026-04-16T07:54:03+02:00" and "2026-04-16T07:54:03.000+02:00"
+            // in practice. UTC + Z avoids the ambiguity entirely.
             if ($context->incremental && $context->since) {
-                $query['updatedDateFrom'] = $context->since->format(\DateTimeInterface::RFC3339_EXTENDED);
+                $utc = (clone $context->since)->setTimezone(new \DateTimeZone('UTC'));
+                $query['updatedDateFrom'] = $utc->format('Y-m-d\TH:i:s.v\Z');
             }
         }
 
