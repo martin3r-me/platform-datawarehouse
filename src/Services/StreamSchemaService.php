@@ -12,6 +12,53 @@ use Platform\Datawarehouse\Models\DatawarehouseSchemaMigration;
 class StreamSchemaService
 {
     /**
+     * Column names that collide with system columns added by createTable().
+     * User-defined columns with these names are auto-renamed via
+     * sanitizeColumnName() during onboarding.
+     */
+    public const RESERVED_COLUMNS = [
+        'id',
+        'import_id',
+        'imported_at',
+        'created_at',
+        'updated_at',
+        '_external_id',
+        '_synced_at',
+        '_source_run_id',
+        '_row_hash',
+        '_deleted_at',
+        '_snapshot_at',
+        '_valid_from',
+        '_valid_to',
+        '_is_current',
+    ];
+
+    /**
+     * Return a column name safe to use for user-defined columns. Collisions
+     * with RESERVED_COLUMNS are resolved by prefixing with "ext_" (and by
+     * suffixing a counter if even that collides, though unlikely).
+     */
+    public static function sanitizeColumnName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return 'col';
+        }
+
+        if (!in_array($name, self::RESERVED_COLUMNS, true)) {
+            return $name;
+        }
+
+        $candidate = 'ext_' . $name;
+        $suffix = 2;
+        while (in_array($candidate, self::RESERVED_COLUMNS, true)) {
+            $candidate = 'ext_' . $name . '_' . $suffix;
+            $suffix++;
+        }
+        return $candidate;
+    }
+
+    /**
      * Create the dynamic table for a stream based on its column definitions.
      *
      * System columns added uniformly for all streams:
@@ -31,6 +78,17 @@ class StreamSchemaService
 
         if ($columns->isEmpty()) {
             throw new \RuntimeException("Stream '{$stream->name}' has no columns defined.");
+        }
+
+        // Defense-in-depth: reject collisions with reserved column names
+        // with a clear error instead of letting MySQL raise Duplicate column.
+        foreach ($columns as $col) {
+            if (in_array($col->column_name, self::RESERVED_COLUMNS, true)) {
+                throw new \RuntimeException(
+                    "Column name '{$col->column_name}' (from source '{$col->source_key}') ".
+                    "collides with a reserved system column. Rename the column before activation."
+                );
+            }
         }
 
         $strategy = $stream->sync_strategy ?? 'append';

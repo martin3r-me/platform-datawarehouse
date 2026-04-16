@@ -142,18 +142,20 @@ class StreamOnboarding extends Component
 
         // Persist strategy settings on the stream BEFORE table creation,
         // because SchemaService::createTable inspects sync_strategy for meta columns.
+        $naturalKeyColumn = $this->naturalKeyField
+            ? StreamSchemaService::sanitizeColumnName(Str::snake($this->naturalKeyField))
+            : null;
+
         $this->stream->update([
             'sync_strategy'    => $this->syncStrategy,
-            'natural_key'      => $this->naturalKeyField
-                ? Str::snake($this->naturalKeyField)  // map source_key → column_name
-                : null,
+            'natural_key'      => $naturalKeyColumn,
             'change_detection' => $this->changeDetection,
             'soft_delete'      => $this->softDelete,
         ]);
 
-        // Create columns
+        // Create columns (auto-rename if column name collides with system columns)
         foreach ($selectedFields as $field) {
-            $columnName = Str::snake($field['source_key']);
+            $columnName = StreamSchemaService::sanitizeColumnName(Str::snake($field['source_key']));
 
             DatawarehouseStreamColumn::create([
                 'stream_id'   => $this->stream->id,
