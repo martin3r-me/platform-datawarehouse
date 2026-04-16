@@ -18,7 +18,7 @@ class Sidebar extends Component
         }
 
         $streams = DatawarehouseStream::where('team_id', $user->currentTeam->id)
-            ->where('is_active', true)
+            ->whereIn('status', ['active', 'onboarding'])
             ->orderBy('name')
             ->get();
 

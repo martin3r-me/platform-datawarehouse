@@ -14,7 +14,11 @@
         <x-ui-sidebar-list label="Streams">
             @foreach($streams as $stream)
                 <x-ui-sidebar-item :href="route('datawarehouse.dashboard')">
-                    <div class="w-2 h-2 rounded-full {{ $stream->is_active ? 'bg-green-500' : 'bg-gray-400' }}"></div>
+                    <div class="w-2 h-2 rounded-full
+                        @if($stream->status === 'active') bg-green-500
+                        @elseif($stream->status === 'onboarding') bg-amber-500
+                        @else bg-gray-400
+                        @endif"></div>
                     <span class="ml-2 text-sm truncate">{{ $stream->name }}</span>
                 </x-ui-sidebar-item>
             @endforeach
