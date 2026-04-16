@@ -78,7 +78,9 @@
                         @foreach($streams as $stream)
                             @php
                                 $isOnboarding = $stream->status === 'onboarding';
-                                $href = $isOnboarding ? route('datawarehouse.stream.onboarding', $stream) : null;
+                                $href = $isOnboarding
+                                    ? route('datawarehouse.stream.onboarding', $stream)
+                                    : route('datawarehouse.stream.detail', $stream);
                             @endphp
                             <{{ $href ? 'a' : 'div' }}
                                 @if($href) href="{{ $href }}" @endif
