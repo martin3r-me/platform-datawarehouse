@@ -11,6 +11,7 @@ use Livewire\Livewire;
 use Platform\Core\PlatformCore;
 use Platform\Core\Routing\ModuleRouter;
 use Platform\Datawarehouse\Console\Commands\DispatchPullStreamsCommand;
+use Platform\Datawarehouse\Providers\Lexoffice\LexofficeProvider;
 use Platform\Datawarehouse\Providers\ProviderRegistry;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -62,6 +63,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'datawarehouse');
 
         $this->registerLivewireComponents();
+        $this->registerPullProviders();
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -77,6 +79,13 @@ class DatawarehouseServiceProvider extends ServiceProvider
                     ->runInBackground();
             });
         }
+    }
+
+    protected function registerPullProviders(): void
+    {
+        /** @var ProviderRegistry $registry */
+        $registry = $this->app->make(ProviderRegistry::class);
+        $registry->register(new LexofficeProvider());
     }
 
     protected function registerLivewireComponents(): void
