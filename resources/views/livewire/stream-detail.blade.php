@@ -113,30 +113,76 @@
 
             {{-- Tab: Übersicht --}}
             @if($activeTab === 'overview')
+                @php
+                    $scheduleLabels = [
+                        'every_minute' => 'Jede Minute',
+                        'every_5_min'  => 'Alle 5 Minuten',
+                        'every_15_min' => 'Alle 15 Minuten',
+                        'hourly'       => 'Stündlich',
+                        'daily'        => 'Täglich',
+                    ];
+                    $sourceLabels = [
+                        'webhook_post' => 'Webhook (POST)',
+                        'pull_get'     => 'Pull (HTTP GET)',
+                        'manual'       => 'Manuell (CSV/Excel)',
+                    ];
+                    $modeLabels = [
+                        'append' => 'Append',
+                        'upsert' => 'Upsert',
+                    ];
+                    $strategyLabels = [
+                        'append'   => 'Append-Only',
+                        'current'  => 'Current (Upsert)',
+                        'snapshot' => 'Snapshot',
+                        'scd2'     => 'SCD Type 2',
+                    ];
+                    $pullModeLabels = [
+                        'full'        => 'Voll',
+                        'incremental' => 'Inkrementell',
+                    ];
+                @endphp
+
                 <div class="space-y-6">
-                    <x-ui-panel title="Konfiguration">
-                        <div class="p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    {{-- Allgemein --}}
+                    <x-ui-panel title="Allgemein">
+                        <div class="p-4 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Name</div>
+                                <div class="font-medium text-[var(--ui-secondary)]">{{ $stream->name }}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Slug</div>
+                                <div class="font-mono text-xs text-[var(--ui-secondary)]">{{ $stream->slug ?? '—' }}</div>
+                            </div>
                             <div>
                                 <div class="text-xs text-[var(--ui-muted)]">Quelle</div>
-                                <div class="font-medium text-[var(--ui-secondary)]">{{ $stream->source_type }}</div>
-                            </div>
-                            <div>
-                                <div class="text-xs text-[var(--ui-muted)]">Modus</div>
-                                <div class="font-medium text-[var(--ui-secondary)]">{{ $stream->mode }}</div>
-                            </div>
-                            @if($stream->mode === 'upsert')
-                                <div>
-                                    <div class="text-xs text-[var(--ui-muted)]">Upsert-Key</div>
-                                    <div class="font-medium text-[var(--ui-secondary)] font-mono">{{ $stream->upsert_key }}</div>
+                                <div class="font-medium text-[var(--ui-secondary)]">
+                                    {{ $sourceLabels[$stream->source_type] ?? $stream->source_type }}
                                 </div>
-                            @endif
+                            </div>
                             <div>
-                                <div class="text-xs text-[var(--ui-muted)]">Tabelle</div>
-                                <div class="font-mono text-xs text-[var(--ui-secondary)]">{{ $stream->table_name ?? '—' }}</div>
+                                <div class="text-xs text-[var(--ui-muted)]">Status</div>
+                                <div>
+                                    @if($stream->status === 'active')
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">Aktiv</span>
+                                    @elseif($stream->status === 'paused')
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Pausiert</span>
+                                    @elseif($stream->status === 'archived')
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-zinc-200 text-zinc-700">Archiviert</span>
+                                    @elseif($stream->status === 'onboarding')
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Onboarding</span>
+                                    @else
+                                        <span class="text-xs text-[var(--ui-muted)]">{{ $stream->status }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Erstellt</div>
+                                <div class="text-[var(--ui-secondary)]">{{ $stream->created_at->format('d.m.Y H:i') }}</div>
                             </div>
                             <div>
                                 <div class="text-xs text-[var(--ui-muted)]">Letzter Lauf</div>
-                                <div class="text-[var(--ui-secondary)]">
+                                <div class="text-[var(--ui-secondary)]" title="{{ $stream->last_run_at?->format('d.m.Y H:i:s') }}">
                                     {{ $stream->last_run_at ? $stream->last_run_at->diffForHumans() : '—' }}
                                 </div>
                             </div>
@@ -154,52 +200,93 @@
                                     @endif
                                 </div>
                             </div>
-                            <div>
-                                <div class="text-xs text-[var(--ui-muted)]">Erstellt</div>
-                                <div class="text-[var(--ui-secondary)]">{{ $stream->created_at->format('d.m.Y H:i') }}</div>
+                            <div class="col-span-2 lg:col-span-4">
+                                <div class="text-xs text-[var(--ui-muted)]">UUID</div>
+                                <div class="font-mono text-xs text-[var(--ui-muted)] select-all">{{ $stream->uuid }}</div>
                             </div>
                         </div>
                     </x-ui-panel>
 
-                    @if($stream->isWebhook())
-                        <x-ui-panel title="Webhook-Endpoint">
-                            <div class="p-4 space-y-3">
-                                <p class="text-sm text-[var(--ui-muted)]">Sende JSON-Daten per POST an diese URL:</p>
-                                <div x-data="{ copied: false }" class="relative">
-                                    @php $webhookUrl = url('/api/datawarehouse/ingest/' . $stream->endpoint_token); @endphp
-                                    <div class="flex items-center gap-2 p-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]">
-                                        <code class="flex-1 text-sm text-[var(--ui-secondary)] break-all select-all font-mono">{{ $webhookUrl }}</code>
-                                        <button
-                                            @click="navigator.clipboard.writeText('{{ $webhookUrl }}'); copied = true; setTimeout(() => copied = false, 2000)"
-                                            class="shrink-0 p-2 rounded-md hover:bg-[var(--ui-muted-5)] text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
-                                            title="URL kopieren"
-                                        >
-                                            <template x-if="!copied">
-                                                @svg('heroicon-o-clipboard-document', 'w-5 h-5')
-                                            </template>
-                                            <template x-if="copied">
-                                                @svg('heroicon-o-check', 'w-5 h-5 text-green-600')
-                                            </template>
-                                        </button>
-                                    </div>
+                    {{-- Sync-Verhalten --}}
+                    <x-ui-panel title="Sync-Verhalten" subtitle="Wie eingehende Daten geschrieben werden">
+                        <div class="p-4 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Modus (legacy)</div>
+                                <div class="font-medium text-[var(--ui-secondary)]">
+                                    {{ $modeLabels[$stream->mode] ?? $stream->mode ?? '—' }}
                                 </div>
                             </div>
-                        </x-ui-panel>
-                    @endif
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Sync-Strategie</div>
+                                <div class="font-medium text-[var(--ui-secondary)]">
+                                    {{ $strategyLabels[$stream->sync_strategy] ?? $stream->sync_strategy ?? '—' }}
+                                </div>
+                            </div>
+                            @if($stream->strategyRequiresKey() || $stream->mode === 'upsert')
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)]">
+                                        {{ $stream->sync_strategy ? 'Natural Key' : 'Upsert-Key' }}
+                                    </div>
+                                    <div class="font-mono text-xs text-[var(--ui-secondary)]">
+                                        {{ $stream->natural_key ?? $stream->upsert_key ?? '—' }}
+                                    </div>
+                                </div>
+                            @endif
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Frequenz</div>
+                                <div class="text-[var(--ui-secondary)]">
+                                    @if($stream->isPull())
+                                        {{ $scheduleLabels[$stream->pull_schedule] ?? $stream->pull_schedule ?? '—' }}
+                                    @else
+                                        {{ $stream->frequency ?? 'Event-basiert' }}
+                                    @endif
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Change-Detection</div>
+                                <div class="text-[var(--ui-secondary)]">
+                                    @if($stream->change_detection)
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Aktiviert</span>
+                                    @else
+                                        <span class="text-xs text-[var(--ui-muted)]">—</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-[var(--ui-muted)]">Soft-Delete</div>
+                                <div class="text-[var(--ui-secondary)]">
+                                    @if($stream->soft_delete)
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Aktiviert</span>
+                                    @else
+                                        <span class="text-xs text-[var(--ui-muted)]">—</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </x-ui-panel>
 
+                    {{-- Pull-Details --}}
                     @if($stream->isPull())
-                        <x-ui-panel title="Pull-Konfiguration">
+                        <x-ui-panel title="Pull-Details" subtitle="Verbindung, Endpoint und Cursor-Zustand">
                             <div class="p-4 space-y-4 text-sm">
                                 @if($flash)
                                     <div class="p-2 rounded bg-blue-50 border border-blue-200 text-blue-800 text-xs">{{ $flash }}</div>
                                 @endif
-                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
                                     <div>
                                         <div class="text-xs text-[var(--ui-muted)]">Verbindung</div>
                                         <div class="font-medium text-[var(--ui-secondary)]">
-                                            {{ $connection?->name ?? '—' }}
                                             @if($connection)
-                                                <span class="text-xs text-[var(--ui-muted)]">({{ $connection->provider_key }})</span>
+                                                <a href="{{ route('datawarehouse.connections') }}"
+                                                   class="hover:underline">{{ $connection->name }}</a>
+                                                <div class="text-xs text-[var(--ui-muted)]">
+                                                    {{ $connection->provider_key }}
+                                                    @if(!$connection->is_active)
+                                                        <span class="px-1 py-0.5 rounded bg-red-100 text-red-800 ml-1">inaktiv</span>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                —
                                             @endif
                                         </div>
                                     </div>
@@ -209,39 +296,156 @@
                                     </div>
                                     <div>
                                         <div class="text-xs text-[var(--ui-muted)]">Frequenz</div>
-                                        <div class="text-[var(--ui-secondary)]">{{ $stream->pull_schedule ?? '—' }}</div>
+                                        <div class="text-[var(--ui-secondary)]">
+                                            {{ $scheduleLabels[$stream->pull_schedule] ?? $stream->pull_schedule ?? '—' }}
+                                            @if($stream->pull_schedule)
+                                                <div class="text-xs text-[var(--ui-muted)] font-mono">{{ $stream->pull_schedule }}</div>
+                                            @endif
+                                        </div>
                                     </div>
                                     <div>
                                         <div class="text-xs text-[var(--ui-muted)]">Pull-Modus</div>
                                         <div class="text-[var(--ui-secondary)]">
-                                            {{ $stream->pull_mode ?? '—' }}
+                                            {{ $pullModeLabels[$stream->pull_mode] ?? $stream->pull_mode ?? '—' }}
                                             @if($stream->pull_mode === 'incremental' && $stream->incremental_field)
-                                                <span class="text-xs text-[var(--ui-muted)] font-mono">({{ $stream->incremental_field }})</span>
+                                                <div class="text-xs text-[var(--ui-muted)] font-mono">
+                                                    Feld: {{ $stream->incremental_field }}
+                                                </div>
                                             @endif
                                         </div>
                                     </div>
                                     <div>
                                         <div class="text-xs text-[var(--ui-muted)]">Letzter Pull</div>
-                                        <div class="text-[var(--ui-secondary)]">
-                                            {{ $stream->last_pull_at ? $stream->last_pull_at->diffForHumans() : '—' }}
+                                        <div class="text-[var(--ui-secondary)]" title="{{ $stream->last_pull_at?->format('d.m.Y H:i:s') }}">
+                                            {{ $stream->last_pull_at ? $stream->last_pull_at->diffForHumans() : 'Noch nie' }}
                                         </div>
                                     </div>
-                                    <div class="col-span-1 lg:col-span-3">
+                                    <div class="col-span-2 lg:col-span-3">
                                         <div class="text-xs text-[var(--ui-muted)]">Letzter Cursor</div>
                                         <div class="font-mono text-xs text-[var(--ui-secondary)] break-all">
                                             {{ $stream->last_cursor ? json_encode($stream->last_cursor, JSON_UNESCAPED_UNICODE) : '—' }}
                                         </div>
                                     </div>
+                                    @if(!empty($stream->pull_config))
+                                        <div class="col-span-2 lg:col-span-4">
+                                            <div class="text-xs text-[var(--ui-muted)]">Zusatz-Konfiguration</div>
+                                            <pre class="font-mono text-xs text-[var(--ui-secondary)] bg-[var(--ui-muted-5)] p-2 rounded border border-[var(--ui-border)] overflow-x-auto">{{ json_encode($stream->pull_config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                        </div>
+                                    @endif
                                 </div>
-                                <div class="flex items-center gap-2 pt-2 border-t border-[var(--ui-border)]">
+                                <div class="flex items-center gap-2 pt-3 border-t border-[var(--ui-border)]">
                                     <x-ui-button variant="primary" size="sm" wire:click="triggerPull">
                                         @svg('heroicon-o-arrow-down-tray', 'w-4 h-4 mr-1')
                                         Pull jetzt starten
                                     </x-ui-button>
+                                    @if(!$stream->connection_id || !$stream->endpoint_key)
+                                        <span class="text-xs text-red-600">Verbindung oder Endpoint fehlen.</span>
+                                    @endif
                                 </div>
                             </div>
                         </x-ui-panel>
                     @endif
+
+                    {{-- Webhook-Details --}}
+                    @if($stream->isWebhook())
+                        <x-ui-panel title="Webhook-Details" subtitle="POST-Endpoint für eingehende Daten">
+                            <div class="p-4 space-y-4">
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)] mb-1">Endpoint-URL</div>
+                                    <div x-data="{ copied: false }" class="relative">
+                                        @php $webhookUrl = url('/api/datawarehouse/ingest/' . $stream->endpoint_token); @endphp
+                                        <div class="flex items-center gap-2 p-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]">
+                                            <code class="flex-1 text-sm text-[var(--ui-secondary)] break-all select-all font-mono">{{ $webhookUrl }}</code>
+                                            <button
+                                                @click="navigator.clipboard.writeText('{{ $webhookUrl }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                class="shrink-0 p-2 rounded-md hover:bg-[var(--ui-muted-5)] text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
+                                                title="URL kopieren"
+                                            >
+                                                <template x-if="!copied">
+                                                    @svg('heroicon-o-clipboard-document', 'w-5 h-5')
+                                                </template>
+                                                <template x-if="copied">
+                                                    @svg('heroicon-o-check', 'w-5 h-5 text-green-600')
+                                                </template>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)] mb-1">Endpoint-Token</div>
+                                    <code class="text-xs text-[var(--ui-muted)] font-mono select-all break-all">{{ $stream->endpoint_token }}</code>
+                                </div>
+                            </div>
+                        </x-ui-panel>
+                    @endif
+
+                    {{-- Schema --}}
+                    <x-ui-panel title="Schema" subtitle="Dynamische Zieltabelle und Änderungs-Historie">
+                        <div class="p-4 space-y-4 text-sm">
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)]">Tabellenname</div>
+                                    <div class="font-mono text-xs text-[var(--ui-secondary)]">{{ $stream->table_name ?? '—' }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)]">Angelegt</div>
+                                    <div class="text-[var(--ui-secondary)]">
+                                        @if($stream->table_created)
+                                            <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">Ja</span>
+                                        @else
+                                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Nein</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)]">Schema-Version</div>
+                                    <div class="font-medium text-[var(--ui-secondary)]">{{ $stream->schema_version ?? 0 }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-[var(--ui-muted)]">Spalten aktiv</div>
+                                    <div class="font-medium text-[var(--ui-secondary)]">{{ $columns->where('is_active', true)->count() }} / {{ $columns->count() }}</div>
+                                </div>
+                            </div>
+
+                            @if($schemaMigrations->isNotEmpty())
+                                <div class="pt-3 border-t border-[var(--ui-border)]">
+                                    <div class="text-xs font-bold text-[var(--ui-muted)] uppercase mb-2">Migrations-Historie</div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-xs">
+                                            <thead>
+                                                <tr class="text-left text-[var(--ui-muted)] border-b border-[var(--ui-border)]">
+                                                    <th class="py-1.5 pr-3">v</th>
+                                                    <th class="py-1.5 pr-3">Operation</th>
+                                                    <th class="py-1.5 pr-3">Spalte</th>
+                                                    <th class="py-1.5 pr-3">Status</th>
+                                                    <th class="py-1.5 pr-3">Zeit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($schemaMigrations as $m)
+                                                    <tr class="border-b border-[var(--ui-border)]/50">
+                                                        <td class="py-1.5 pr-3 font-mono">{{ $m->version }}</td>
+                                                        <td class="py-1.5 pr-3">{{ $m->operation }}</td>
+                                                        <td class="py-1.5 pr-3 font-mono">{{ $m->column_name ?? '—' }}</td>
+                                                        <td class="py-1.5 pr-3">
+                                                            @if($m->status === 'success')
+                                                                <span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">{{ $m->status }}</span>
+                                                            @elseif($m->status === 'error')
+                                                                <span class="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800">{{ $m->status }}</span>
+                                                            @else
+                                                                <span class="text-xs text-[var(--ui-muted)]">{{ $m->status }}</span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="py-1.5 pr-3 text-[var(--ui-muted)]">{{ $m->created_at?->format('d.m.Y H:i') }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </x-ui-panel>
                 </div>
             @endif
 

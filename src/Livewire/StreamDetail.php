@@ -100,12 +100,18 @@ class StreamDetail extends Component
 
         $connection = $this->stream->isPull() ? $this->stream->connection : null;
 
+        $schemaMigrations = $this->stream->schemaMigrations()
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
+
         return view('datawarehouse::livewire.stream-detail', [
-            'imports'    => $imports,
-            'columns'    => $columns,
-            'rowCount'   => $rowCount,
-            'latestRows' => $latestRows,
-            'connection' => $connection,
+            'imports'          => $imports,
+            'columns'          => $columns,
+            'rowCount'         => $rowCount,
+            'latestRows'       => $latestRows,
+            'connection'       => $connection,
+            'schemaMigrations' => $schemaMigrations,
         ])->layout('platform::layouts.app');
     }
 }
