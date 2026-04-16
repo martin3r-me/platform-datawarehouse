@@ -452,6 +452,9 @@
             {{-- Tab: Spalten --}}
             @if($activeTab === 'columns')
                 <x-ui-panel title="Spalten" subtitle="Konfigurierte Felder des Datenstroms">
+                    @if($flash)
+                        <div class="mx-4 mt-4 p-2 rounded bg-blue-50 border border-blue-200 text-blue-800 text-xs">{{ $flash }}</div>
+                    @endif
                     @if($columns->isEmpty())
                         <div class="p-6 text-center text-sm text-[var(--ui-muted)]">Keine Spalten konfiguriert.</div>
                     @else
@@ -466,6 +469,7 @@
                                         <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Typ</th>
                                         <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Transform</th>
                                         <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Flags</th>
+                                        <th class="text-right py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Aktionen</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -475,11 +479,26 @@
                                             <td class="py-2 px-3 font-mono text-[var(--ui-secondary)]">{{ $col->source_key }}</td>
                                             <td class="py-2 px-3 font-mono text-[var(--ui-secondary)]">{{ $col->column_name }}</td>
                                             <td class="py-2 px-3 text-[var(--ui-secondary)]">{{ $col->label }}</td>
-                                            <td class="py-2 px-3"><span class="px-1.5 py-0.5 rounded bg-[var(--ui-muted-5)] text-xs">{{ $col->data_type }}</span></td>
+                                            <td class="py-2 px-3">
+                                                <span class="px-1.5 py-0.5 rounded bg-[var(--ui-muted-5)] text-xs">{{ $col->data_type }}</span>
+                                                @if($col->data_type === 'decimal')
+                                                    <span class="text-xs text-[var(--ui-muted)] ml-1">({{ $col->precision ?? 10 }}, {{ $col->scale ?? 2 }})</span>
+                                                @endif
+                                            </td>
                                             <td class="py-2 px-3 text-[var(--ui-muted)] font-mono text-xs">{{ $col->transform ?? '—' }}</td>
                                             <td class="py-2 px-3 text-xs">
                                                 @if($col->is_indexed)<span class="px-1 py-0.5 rounded bg-blue-100 text-blue-800 mr-1">Idx</span>@endif
                                                 @if($col->is_nullable)<span class="px-1 py-0.5 rounded bg-gray-100 text-gray-700">N</span>@endif
+                                            </td>
+                                            <td class="py-2 px-3 text-right">
+                                                <button
+                                                    wire:click="editColumn({{ $col->id }})"
+                                                    class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-[var(--ui-border)] text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]"
+                                                    title="Datentyp ändern"
+                                                >
+                                                    @svg('heroicon-o-pencil-square', 'w-3.5 h-3.5')
+                                                    Typ
+                                                </button>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -573,5 +592,63 @@
                 </x-ui-panel>
             @endif
         </div>
+
+        {{-- Modal: Spalten-Typ ändern --}}
+        <x-ui-modal size="md" wire:model="showColumnEditModal" :closeButton="true">
+            <x-slot name="header">
+                <h2 class="text-lg font-bold text-[var(--ui-secondary)]">Datentyp ändern</h2>
+                @if($editingColumnLabel)
+                    <p class="text-xs text-[var(--ui-muted)] mt-0.5 font-mono">{{ $editingColumnLabel }}</p>
+                @endif
+            </x-slot>
+
+            <div class="space-y-4">
+                @if($editingError)
+                    <div class="p-2 rounded bg-red-50 border border-red-200 text-red-800 text-xs">{{ $editingError }}</div>
+                @endif
+
+                <div class="p-2 rounded bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                    @svg('heroicon-o-exclamation-triangle', 'w-4 h-4 inline-block mr-1 -mt-0.5')
+                    Achtung: Die Änderung führt eine <strong>MySQL-<code>ALTER TABLE</code></strong> aus.
+                    Inkompatible Werte können dabei verloren gehen oder die Migration fehlschlagen.
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Datentyp</label>
+                    <select wire:model.live="editingType" class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                        @foreach(\Platform\Datawarehouse\Livewire\StreamDetail::DATA_TYPES as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                @if($editingType === 'decimal')
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Precision (1–65)</label>
+                            <input type="number" min="1" max="65" wire:model="editingPrecision"
+                                class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Scale (0–30)</label>
+                            <input type="number" min="0" max="30" wire:model="editingScale"
+                                class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <x-slot name="footer">
+                <div class="flex items-center justify-end gap-2">
+                    <x-ui-button variant="secondary" size="sm" wire:click="cancelColumnEdit">
+                        Abbrechen
+                    </x-ui-button>
+                    <x-ui-button variant="primary" size="sm" wire:click="saveColumnType">
+                        @svg('heroicon-o-check', 'w-4 h-4 mr-1')
+                        Ändern
+                    </x-ui-button>
+                </div>
+            </x-slot>
+        </x-ui-modal>
     </x-ui-page-container>
 </x-ui-page>

@@ -8,14 +8,36 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Platform\Datawarehouse\Jobs\PullStreamJob;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
+use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
+use Platform\Datawarehouse\Services\StreamSchemaService;
 
 class StreamDetail extends Component
 {
+    public const DATA_TYPES = [
+        'string'   => 'String (VARCHAR 255)',
+        'text'     => 'Text (lang)',
+        'integer'  => 'Integer',
+        'decimal'  => 'Decimal',
+        'boolean'  => 'Boolean',
+        'date'     => 'Date',
+        'datetime' => 'Datetime',
+        'json'     => 'JSON',
+    ];
+
     public DatawarehouseStream $stream;
 
     public string $activeTab = 'overview';
 
     public ?string $flash = null;
+
+    // Column-Edit State
+    public bool $showColumnEditModal = false;
+    public ?int $editingColumnId = null;
+    public string $editingColumnLabel = '';
+    public string $editingType = 'string';
+    public int $editingPrecision = 10;
+    public int $editingScale = 2;
+    public ?string $editingError = null;
 
     public function mount(DatawarehouseStream $stream): void
     {
@@ -75,6 +97,90 @@ class StreamDetail extends Component
 
         PullStreamJob::dispatch($this->stream->id, Auth::id());
         $this->flash = 'Pull-Run wurde in die Queue gestellt.';
+    }
+
+    public function editColumn(int $columnId): void
+    {
+        $column = $this->stream->columns()->where('id', $columnId)->first();
+        if (!$column) {
+            return;
+        }
+
+        $this->editingColumnId    = $column->id;
+        $this->editingColumnLabel = (string) ($column->label ?? $column->column_name);
+        $this->editingType        = $column->data_type;
+        $this->editingPrecision   = (int) ($column->precision ?? 10);
+        $this->editingScale       = (int) ($column->scale ?? 2);
+        $this->editingError       = null;
+        $this->showColumnEditModal = true;
+    }
+
+    public function cancelColumnEdit(): void
+    {
+        $this->showColumnEditModal = false;
+        $this->editingColumnId     = null;
+        $this->editingColumnLabel  = '';
+        $this->editingType         = 'string';
+        $this->editingPrecision    = 10;
+        $this->editingScale        = 2;
+        $this->editingError        = null;
+    }
+
+    public function saveColumnType(StreamSchemaService $schema): void
+    {
+        $this->editingError = null;
+
+        if (!$this->editingColumnId) {
+            return;
+        }
+
+        if (!array_key_exists($this->editingType, self::DATA_TYPES)) {
+            $this->editingError = 'Ungültiger Datentyp.';
+            return;
+        }
+
+        $column = $this->stream->columns()->where('id', $this->editingColumnId)->first();
+        if (!$column) {
+            $this->editingError = 'Spalte nicht gefunden.';
+            return;
+        }
+
+        $oldDefinition = [
+            'data_type' => $column->data_type,
+            'precision' => $column->precision,
+            'scale'     => $column->scale,
+        ];
+
+        // Decimal needs precision/scale; keep old values for other types so
+        // the underlying column definition is predictable.
+        $precision = $this->editingType === 'decimal' ? max(1, min(65, $this->editingPrecision)) : $column->precision;
+        $scale     = $this->editingType === 'decimal' ? max(0, min(30, $this->editingScale)) : $column->scale;
+
+        if ($this->editingType === 'decimal' && $scale > $precision) {
+            $this->editingError = 'Scale darf nicht größer als Precision sein.';
+            return;
+        }
+
+        $column->update([
+            'data_type' => $this->editingType,
+            'precision' => $precision,
+            'scale'     => $scale,
+        ]);
+
+        // Only run the DDL migration when the target table actually exists.
+        if ($this->stream->table_name && $this->stream->table_created) {
+            try {
+                $schema->modifyColumn($this->stream, $column, $oldDefinition, Auth::id());
+            } catch (\Throwable $e) {
+                // Revert the model change so state stays consistent with the table.
+                $column->update($oldDefinition);
+                $this->editingError = 'Migration fehlgeschlagen: ' . $e->getMessage();
+                return;
+            }
+        }
+
+        $this->flash = "Spalte '{$column->column_name}' wurde auf Typ '{$this->editingType}' geändert.";
+        $this->cancelColumnEdit();
     }
 
     public function render()
