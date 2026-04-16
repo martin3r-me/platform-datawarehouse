@@ -111,8 +111,10 @@ class LexofficeProvider implements PullProvider
             $query['voucherStatus'] = 'any';
 
             // Incremental: only rows updated on/after $since.
+            // Lexoffice requires ISO 8601 WITH milliseconds (RFC3339_EXTENDED);
+            // plain DATE_ATOM without ms is rejected with HTTP 400.
             if ($context->incremental && $context->since) {
-                $query['updatedDateFrom'] = $context->since->format(DATE_ATOM);
+                $query['updatedDateFrom'] = $context->since->format(\DateTimeInterface::RFC3339_EXTENDED);
             }
         }
 
