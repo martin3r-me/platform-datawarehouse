@@ -3,6 +3,7 @@
 namespace Platform\Datawarehouse\Livewire;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,6 +14,10 @@ use Platform\Datawarehouse\Services\StreamSchemaService;
 
 class StreamDetail extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'tailwind';
+
     public const DATA_TYPES = [
         'string'   => 'String (VARCHAR 255)',
         'text'     => 'Text (lang)',
@@ -56,6 +61,12 @@ class StreamDetail extends Component
 
     public function setTab(string $tab): void
     {
+        // Reset pagination when entering the data tab so users always start
+        // on page 1 — otherwise a stale page number from a different stream
+        // or previous visit can lead to an empty page.
+        if ($tab === 'data' && $this->activeTab !== 'data') {
+            $this->resetPage();
+        }
         $this->activeTab = $tab;
     }
 
@@ -194,14 +205,17 @@ class StreamDetail extends Component
 
         $tableName = $this->stream->table_name;
         $rowCount  = null;
-        $latestRows = collect();
+        $rows      = null;
 
         if ($tableName && Schema::hasTable($tableName)) {
             $rowCount = DB::table($tableName)->count();
-            $latestRows = DB::table($tableName)
-                ->orderByDesc('id')
-                ->limit(20)
-                ->get();
+            // Only build the paginator when the data tab is actually visible —
+            // otherwise every render hits the table unnecessarily.
+            if ($this->activeTab === 'data') {
+                $rows = DB::table($tableName)
+                    ->orderByDesc('id')
+                    ->paginate(25);
+            }
         }
 
         $connection = $this->stream->isPull() ? $this->stream->connection : null;
@@ -215,7 +229,7 @@ class StreamDetail extends Component
             'imports'          => $imports,
             'columns'          => $columns,
             'rowCount'         => $rowCount,
-            'latestRows'       => $latestRows,
+            'rows'             => $rows,
             'connection'       => $connection,
             'schemaMigrations' => $schemaMigrations,
         ])->layout('platform::layouts.app');

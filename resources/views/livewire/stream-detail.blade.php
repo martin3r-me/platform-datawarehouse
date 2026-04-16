@@ -511,21 +511,29 @@
 
             {{-- Tab: Daten --}}
             @if($activeTab === 'data')
-                <x-ui-panel title="Daten" :subtitle="'Neueste ' . $latestRows->count() . ' von ' . ($rowCount ?? 0) . ' Zeilen'">
-                    @if($latestRows->isEmpty())
+                @php
+                    $from = $rows?->firstItem();
+                    $to   = $rows?->lastItem();
+                    $tot  = $rows?->total() ?? ($rowCount ?? 0);
+                    $subtitle = ($rows && $tot > 0)
+                        ? "Zeilen {$from}–{$to} von {$tot} (neueste zuerst)"
+                        : 'Keine Daten in der Tabelle';
+                @endphp
+                <x-ui-panel title="Daten" :subtitle="$subtitle">
+                    @if(!$rows || $rows->isEmpty())
                         <div class="p-6 text-center text-sm text-[var(--ui-muted)]">Noch keine Daten in der Tabelle.</div>
                     @else
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs">
                                 <thead>
                                     <tr class="border-b border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
-                                        @foreach(array_keys((array) $latestRows->first()) as $key)
+                                        @foreach(array_keys((array) $rows->first()) as $key)
                                             <th class="text-left py-2 px-3 font-bold text-[var(--ui-muted)] uppercase whitespace-nowrap">{{ $key }}</th>
                                         @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($latestRows as $row)
+                                    @foreach($rows as $row)
                                         <tr class="border-b border-[var(--ui-border)]/50 hover:bg-[var(--ui-muted-5)]">
                                             @foreach((array) $row as $v)
                                                 <td class="py-1.5 px-3 text-[var(--ui-secondary)] whitespace-nowrap font-mono">
@@ -537,6 +545,12 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if($rows->hasPages())
+                            <div class="p-3 border-t border-[var(--ui-border)]">
+                                {{ $rows->onEachSide(1)->links() }}
+                            </div>
+                        @endif
                     @endif
                 </x-ui-panel>
             @endif
