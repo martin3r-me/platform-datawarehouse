@@ -4,6 +4,7 @@ namespace Platform\Datawarehouse\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Database\Schema\Blueprint;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
@@ -34,25 +35,54 @@ class StreamSchemaService
     ];
 
     /**
-     * Return a column name safe to use for user-defined columns. Collisions
-     * with RESERVED_COLUMNS are resolved by prefixing with "ext_" (and by
-     * suffixing a counter if even that collides, though unlikely).
+     * Return a column name safe to use for user-defined columns.
+     *
+     * Normalizes arbitrary source keys (incl. German umlauts, dots, slashes,
+     * whitespace) into a valid MySQL identifier:
+     *   - transliterate to ASCII (ä→a, ß→ss, …)
+     *   - lowercase
+     *   - collapse any run of non-[a-z0-9_] to a single underscore
+     *   - strip leading/trailing underscores
+     *   - prefix with "col_" if the result is empty or starts with a digit
+     *   - truncate to 64 chars (MySQL identifier limit)
+     *   - resolve collisions with RESERVED_COLUMNS by prefixing "ext_"
      */
     public static function sanitizeColumnName(string $name): string
     {
-        $name = trim($name);
-        if ($name === '') {
-            return 'col';
+        // 1. Transliterate umlauts / diacritics to ASCII.
+        $ascii = Str::ascii($name);
+
+        // 2. Lowercase + replace every non-identifier-char with underscore.
+        $clean = strtolower($ascii);
+        $clean = preg_replace('/[^a-z0-9_]+/', '_', $clean);
+
+        // 3. Collapse multiple underscores, trim edges.
+        $clean = preg_replace('/_+/', '_', $clean);
+        $clean = trim($clean, '_');
+
+        // 4. Guard: empty / leading digit.
+        if ($clean === '') {
+            $clean = 'col';
+        }
+        if (ctype_digit($clean[0])) {
+            $clean = 'col_' . $clean;
         }
 
-        if (!in_array($name, self::RESERVED_COLUMNS, true)) {
-            return $name;
+        // 5. MySQL identifier limit (64); reserve 8 chars for potential "ext_" prefix.
+        if (strlen($clean) > 56) {
+            $clean = substr($clean, 0, 56);
+            $clean = rtrim($clean, '_');
         }
 
-        $candidate = 'ext_' . $name;
+        // 6. Resolve reserved-name collisions.
+        if (!in_array($clean, self::RESERVED_COLUMNS, true)) {
+            return $clean;
+        }
+
+        $candidate = 'ext_' . $clean;
         $suffix = 2;
         while (in_array($candidate, self::RESERVED_COLUMNS, true)) {
-            $candidate = 'ext_' . $name . '_' . $suffix;
+            $candidate = 'ext_' . $clean . '_' . $suffix;
             $suffix++;
         }
         return $candidate;
