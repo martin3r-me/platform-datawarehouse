@@ -9,6 +9,7 @@ use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
 use Platform\Datawarehouse\Models\DatawarehouseImport;
 use Platform\Datawarehouse\Services\DataTypeDetector;
+use Platform\Datawarehouse\Services\PullStreamService;
 use Platform\Datawarehouse\Services\StreamSchemaService;
 use Platform\Datawarehouse\Services\StreamImportService;
 
@@ -18,6 +19,10 @@ class StreamOnboarding extends Component
 
     public array $fields = [];
     public bool $activating = false;
+
+    // Sample fetch (Pull-Streams only)
+    public bool $fetchingSample = false;
+    public ?string $sampleError = null;
 
     // Strategy configuration
     public string $syncStrategy = 'append';
@@ -81,6 +86,30 @@ class StreamOnboarding extends Component
     {
         $this->stream->refresh();
         $this->buildFieldsFromSample();
+    }
+
+    /**
+     * Manually trigger a one-shot pull against the provider to capture a
+     * sample payload. Only meaningful for pull streams during onboarding.
+     */
+    public function fetchSample(): void
+    {
+        if (!$this->stream->isPull()) {
+            return;
+        }
+
+        $this->sampleError = null;
+        $this->fetchingSample = true;
+
+        try {
+            app(PullStreamService::class)->fetchSample($this->stream);
+            $this->stream->refresh();
+            $this->buildFieldsFromSample();
+        } catch (\Throwable $e) {
+            $this->sampleError = $e->getMessage();
+        } finally {
+            $this->fetchingSample = false;
+        }
     }
 
     public function activate(): void

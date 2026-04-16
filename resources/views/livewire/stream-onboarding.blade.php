@@ -73,20 +73,61 @@
             @if(!$this->hasSample)
                 {{-- Waiting for data --}}
                 <x-ui-panel>
-                    <div class="p-8 text-center" wire:poll.5s="refreshSample">
+                    <div class="p-8 text-center" @if($stream->isWebhook()) wire:poll.5s="refreshSample" @endif>
                         <div class="mb-4">
-                            @svg('heroicon-o-clock', 'w-16 h-16 text-[var(--ui-muted)] mx-auto animate-pulse')
+                            @if($fetchingSample)
+                                @svg('heroicon-o-arrow-path', 'w-16 h-16 text-[var(--ui-muted)] mx-auto animate-spin')
+                            @else
+                                @svg('heroicon-o-clock', 'w-16 h-16 text-[var(--ui-muted)] mx-auto animate-pulse')
+                            @endif
                         </div>
-                        <h3 class="text-lg font-medium text-[var(--ui-secondary)] mb-2">Warte auf erste Daten...</h3>
-                        <p class="text-[var(--ui-muted)] mb-4">Sende einen POST-Request an die Webhook-URL, um den Onboarding-Prozess fortzusetzen.</p>
 
-                        @if($stream->isWebhook())
-                            <div class="mt-6 max-w-xl mx-auto p-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)] text-left">
-                                <h5 class="text-xs font-bold text-[var(--ui-secondary)] mb-2">Beispiel-Request (curl):</h5>
-                                <pre class="text-xs text-[var(--ui-muted)] overflow-x-auto whitespace-pre-wrap font-mono">curl -X POST {{ $this->webhookUrl }} \
+                        @if($stream->isPull())
+                            <h3 class="text-lg font-medium text-[var(--ui-secondary)] mb-2">Noch keine Sample-Daten</h3>
+                            <p class="text-[var(--ui-muted)] mb-4">
+                                Hole einen Sample-Datensatz vom Provider, um die Felder zu erkennen.
+                            </p>
+
+                            @if($sampleError)
+                                <div class="max-w-xl mx-auto mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 text-left">
+                                    <strong>Fehler:</strong> {{ $sampleError }}
+                                </div>
+                            @endif
+
+                            <div class="flex justify-center gap-2">
+                                <x-ui-button variant="primary" wire:click="fetchSample"
+                                    wire:loading.attr="disabled" :disabled="$fetchingSample">
+                                    <span wire:loading.remove wire:target="fetchSample">
+                                        @svg('heroicon-o-arrow-down-tray', 'w-4 h-4 mr-1')
+                                        Sample jetzt holen
+                                    </span>
+                                    <span wire:loading wire:target="fetchSample">
+                                        @svg('heroicon-o-arrow-path', 'w-4 h-4 mr-1 animate-spin')
+                                        Hole...
+                                    </span>
+                                </x-ui-button>
+                            </div>
+
+                            <div class="mt-4 max-w-xl mx-auto text-left text-xs text-[var(--ui-muted)]">
+                                <p>
+                                    Es wird eine Seite vom Endpoint
+                                    <code class="font-mono">{{ $stream->endpoint_key }}</code>
+                                    geladen und die erste Zeile als Sample gespeichert.
+                                    Es werden noch keine Daten in die Zieltabelle geschrieben.
+                                </p>
+                            </div>
+                        @else
+                            <h3 class="text-lg font-medium text-[var(--ui-secondary)] mb-2">Warte auf erste Daten...</h3>
+                            <p class="text-[var(--ui-muted)] mb-4">Sende einen POST-Request an die Webhook-URL, um den Onboarding-Prozess fortzusetzen.</p>
+
+                            @if($stream->isWebhook())
+                                <div class="mt-6 max-w-xl mx-auto p-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)] text-left">
+                                    <h5 class="text-xs font-bold text-[var(--ui-secondary)] mb-2">Beispiel-Request (curl):</h5>
+                                    <pre class="text-xs text-[var(--ui-muted)] overflow-x-auto whitespace-pre-wrap font-mono">curl -X POST {{ $this->webhookUrl }} \
   -H "Content-Type: application/json" \
   -d '[{"key1": "value1", "key2": 42}]'</pre>
-                            </div>
+                                </div>
+                            @endif
                         @endif
                     </div>
                 </x-ui-panel>

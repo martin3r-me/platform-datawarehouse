@@ -185,6 +185,70 @@ class PullStreamService
     }
 
     /**
+     * Fetch a single page from the provider and store the first row as a
+     * sample payload on the stream. Intended for onboarding: the user gets
+     * to see what the provider returns before the stream is activated.
+     *
+     * Bypasses the isOnboarding() guard used by pull() and does NOT write
+     * to a dynamic table or create an import record.
+     *
+     * @return array<string, mixed>  The stored sample row (flattened).
+     * @throws \RuntimeException on any configuration or provider failure.
+     */
+    public function fetchSample(DatawarehouseStream $stream): array
+    {
+        if (!$stream->isPull()) {
+            throw new \RuntimeException('Stream is not a pull stream.');
+        }
+        if (!$stream->connection_id || !$stream->endpoint_key) {
+            throw new \RuntimeException('Pull stream requires a connection and endpoint.');
+        }
+
+        $connection = $stream->connection;
+        if (!$connection || !$connection->is_active) {
+            throw new \RuntimeException('Connection missing or inactive.');
+        }
+
+        if (!$this->registry->has($connection->provider_key)) {
+            throw new \RuntimeException("Provider '{$connection->provider_key}' is not registered.");
+        }
+
+        $provider  = $this->registry->get($connection->provider_key);
+        $endpoints = $provider->endpoints();
+        if (!isset($endpoints[$stream->endpoint_key])) {
+            throw new \RuntimeException("Endpoint '{$stream->endpoint_key}' not available on provider '{$connection->provider_key}'.");
+        }
+        $endpoint = $endpoints[$stream->endpoint_key];
+
+        $context = new PullContext(
+            connection:       $connection,
+            stream:           $stream,
+            endpoint:         $endpoint,
+            cursor:           null,
+            incremental:      false,
+            incrementalField: null,
+            since:            null,
+        );
+
+        $result = $provider->fetch($context);
+
+        if (empty($result->rows)) {
+            throw new \RuntimeException('Provider returned no rows for the first page.');
+        }
+
+        $firstRow = $result->rows[0];
+
+        // Persist the sample under metadata.sample_payload (same shape
+        // StreamOnboarding already consumes from webhook-based samples).
+        $metadata = $stream->metadata ?? [];
+        $metadata['sample_payload'] = [$firstRow];
+        $metadata['sample_fetched_at'] = now()->toIso8601String();
+        $stream->update(['metadata' => $metadata]);
+
+        return $firstRow;
+    }
+
+    /**
      * Map a raw provider row to DB columns using the stream's column definitions.
      * Unknown fields are ignored (provider may return more than the user wants).
      */
