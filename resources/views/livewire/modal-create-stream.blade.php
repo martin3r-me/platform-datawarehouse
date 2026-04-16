@@ -76,23 +76,73 @@
                     rows="2"
                 />
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Quelle</label>
-                        <select wire:model.live="source_type" class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
-                            <option value="webhook_post">Webhook (POST)</option>
-                            <option value="manual">Manuell</option>
-                            <option value="pull_get">Pull (GET)</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Quelle</label>
+                    <select wire:model.live="source_type" class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
+                        <option value="webhook_post">Webhook (POST) — eingehende Events</option>
+                        <option value="manual">Manuell — CSV / Excel-Upload</option>
+                        <option value="pull_get">Pull (GET) — regelmäßig von API abholen</option>
+                    </select>
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Modus</label>
-                        <select wire:model.live="mode" class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
-                            <option value="append">Append (anfügen)</option>
-                            <option value="snapshot">Snapshot (ersetzen)</option>
-                            <option value="upsert">Upsert (einfügen/aktualisieren)</option>
-                        </select>
+                <div>
+                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-2">
+                        Speichermodus
+                        <span class="font-normal text-xs text-[var(--ui-muted)]">— wie sollen eingehende Daten abgelegt werden?</span>
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        {{-- Snapshot --}}
+                        <button type="button" wire:click="setMode('snapshot')"
+                            class="text-left p-3 rounded-lg border transition-colors
+                                {{ $mode === 'snapshot'
+                                    ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/5 ring-2 ring-[var(--ui-primary)]/20'
+                                    : 'border-[var(--ui-border)] bg-[var(--ui-bg)] hover:bg-[var(--ui-muted-5)]' }}">
+                            <div class="flex items-center gap-2 mb-1">
+                                @svg('heroicon-o-chart-bar', 'w-5 h-5 text-[var(--ui-primary)]')
+                                <div class="font-semibold text-sm text-[var(--ui-secondary)]">Snapshot</div>
+                                <span class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-800 font-medium">Empfohlen</span>
+                            </div>
+                            <div class="text-xs text-[var(--ui-muted)] leading-snug">
+                                Bestand wird pro Pull komplett gespeichert.
+                                <span class="text-[var(--ui-secondary)]">Perfekt für KPIs & Zeitreihen</span>
+                                — z.B. „Offene Rechnungen Ende März".
+                            </div>
+                        </button>
+
+                        {{-- Upsert --}}
+                        <button type="button" wire:click="setMode('upsert')"
+                            class="text-left p-3 rounded-lg border transition-colors
+                                {{ $mode === 'upsert'
+                                    ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/5 ring-2 ring-[var(--ui-primary)]/20'
+                                    : 'border-[var(--ui-border)] bg-[var(--ui-bg)] hover:bg-[var(--ui-muted-5)]' }}">
+                            <div class="flex items-center gap-2 mb-1">
+                                @svg('heroicon-o-arrow-path', 'w-5 h-5 text-[var(--ui-primary)]')
+                                <div class="font-semibold text-sm text-[var(--ui-secondary)]">Upsert</div>
+                            </div>
+                            <div class="text-xs text-[var(--ui-muted)] leading-snug">
+                                Eine Zeile pro Schlüssel, wird bei Änderung aktualisiert.
+                                <span class="text-[var(--ui-secondary)]">„Aktueller Stand jetzt"</span>
+                                — keine Historie.
+                            </div>
+                        </button>
+
+                        {{-- Append --}}
+                        <button type="button" wire:click="setMode('append')"
+                            class="text-left p-3 rounded-lg border transition-colors
+                                {{ $mode === 'append'
+                                    ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/5 ring-2 ring-[var(--ui-primary)]/20'
+                                    : 'border-[var(--ui-border)] bg-[var(--ui-bg)] hover:bg-[var(--ui-muted-5)]' }}">
+                            <div class="flex items-center gap-2 mb-1">
+                                @svg('heroicon-o-queue-list', 'w-5 h-5 text-[var(--ui-primary)]')
+                                <div class="font-semibold text-sm text-[var(--ui-secondary)]">Append</div>
+                            </div>
+                            <div class="text-xs text-[var(--ui-muted)] leading-snug">
+                                Jeder eingehende Datensatz wird angehängt.
+                                <span class="text-[var(--ui-secondary)]">Events & Logs</span>
+                                — ungeeignet für State-KPIs.
+                            </div>
+                        </button>
                     </div>
                 </div>
 
@@ -159,16 +209,34 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Pull-Modus *</label>
-                                    <select wire:model.live="pull_mode"
-                                        class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
-                                        <option value="full">Vollständig</option>
-                                        <option value="incremental">Inkrementell</option>
-                                    </select>
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Pull-Umfang *</label>
+                                    @if($mode === 'snapshot')
+                                        <div class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-muted-5)] px-3 py-2 text-sm text-[var(--ui-muted)] flex items-center gap-2">
+                                            @svg('heroicon-o-lock-closed', 'w-4 h-4')
+                                            <span>Vollständig (durch Snapshot fixiert)</span>
+                                        </div>
+                                    @else
+                                        <select wire:model.live="pull_mode"
+                                            class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]">
+                                            <option value="full">Vollständig — jedes Mal alle Daten</option>
+                                            <option value="incremental">Inkrementell — nur Neues/Änderungen</option>
+                                        </select>
+                                    @endif
                                 </div>
                             </div>
 
-                            @if($pull_mode === 'incremental')
+                            @if($mode === 'snapshot')
+                                <div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800 flex items-start gap-2">
+                                    @svg('heroicon-o-information-circle', 'w-4 h-4 shrink-0 mt-0.5')
+                                    <span>
+                                        Snapshot speichert bei jedem Pull den <strong>kompletten Bestand</strong> mit einem Zeitstempel
+                                        (<code>_snapshot_at</code>). Damit lassen sich später Zeitreihen wie
+                                        „Wert am 31.03." oder „Entwicklung pro Monat" sauber abfragen.
+                                    </span>
+                                </div>
+                            @endif
+
+                            @if($pull_mode === 'incremental' && $mode !== 'snapshot')
                                 <x-ui-input-text
                                     name="incremental_field"
                                     label="Inkrementelles Feld (z.B. updated_at)"

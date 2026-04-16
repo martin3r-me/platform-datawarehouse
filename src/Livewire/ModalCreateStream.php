@@ -18,7 +18,7 @@ class ModalCreateStream extends Component
     public string $name = '';
     public string $description = '';
     public string $source_type = 'webhook_post';
-    public string $mode = 'append';
+    public string $mode = 'snapshot';  // sensible default for KPI / reporting
     public string $upsert_key = '';
 
     // Pull-specific fields
@@ -62,6 +62,26 @@ class ModalCreateStream extends Component
         }
     }
 
+    public function updatedMode(): void
+    {
+        // Snapshot always captures the full state at a point in time —
+        // incremental pulls would defeat that purpose. Force pull_mode=full
+        // and clear the incremental field when the user picks snapshot.
+        if ($this->mode === 'snapshot') {
+            $this->pull_mode = 'full';
+            $this->incremental_field = '';
+        }
+    }
+
+    public function setMode(string $mode): void
+    {
+        if (!in_array($mode, ['snapshot', 'append', 'upsert'], true)) {
+            return;
+        }
+        $this->mode = $mode;
+        $this->updatedMode();
+    }
+
     public function updatedConnectionId(): void
     {
         // When connection changes the available endpoints change too.
@@ -86,7 +106,9 @@ class ModalCreateStream extends Component
                 $this->upsert_key = $endpoint->naturalKey;
             }
         }
-        if ($endpoint->incrementalField) {
+        // Don't override to incremental when the user picked snapshot —
+        // snapshot semantics require full pulls (see updatedMode()).
+        if ($endpoint->incrementalField && $this->mode !== 'snapshot') {
             $this->pull_mode = 'incremental';
             $this->incremental_field = $endpoint->incrementalField;
         } else {
