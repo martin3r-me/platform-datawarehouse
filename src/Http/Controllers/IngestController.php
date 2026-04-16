@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseImport;
+use Platform\Datawarehouse\Services\PayloadNormalizer;
 use Platform\Datawarehouse\Services\StreamImportService;
 
 class IngestController extends Controller
@@ -26,25 +27,27 @@ class IngestController extends Controller
             return response()->json(['error' => 'Invalid or inactive token.'], 404);
         }
 
-        // Try raw JSON body first, then fall back to form data
         $rawData = $request->getContent();
-        $payload = json_decode($rawData, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            // Fallback: try request input (handles form-data, x-www-form-urlencoded, ?json= query param)
+        // Parse body: JSON → URL-decoded JSON → form fields
+        $payload = PayloadNormalizer::parse($rawData);
+
+        if ($payload === null) {
             $input = $request->all();
-
             if (!empty($input)) {
                 $payload = $input;
                 $rawData = json_encode($input);
             } else {
                 return response()->json([
-                    'error'   => 'Invalid JSON payload.',
-                    'hint'    => 'Send data as JSON body with Content-Type: application/json, or as form fields.',
+                    'error'                 => 'Invalid JSON payload.',
+                    'hint'                  => 'Send data as JSON body with Content-Type: application/json, URL-encoded JSON, or form fields.',
                     'received_content_type' => $request->header('Content-Type'),
                 ], 422);
             }
         }
+
+        // Normalize known payload shapes (4D LIST → flat rows, etc.)
+        $payload = PayloadNormalizer::normalize($payload);
 
         // Onboarding: store sample payload, don't import into dynamic table
         if ($stream->isOnboarding()) {
