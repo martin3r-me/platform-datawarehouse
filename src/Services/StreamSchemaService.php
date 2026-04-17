@@ -308,6 +308,32 @@ class StreamSchemaService
         }
     }
 
+    /**
+     * Drop the entire dynamic table for a stream.
+     */
+    public function dropTable(DatawarehouseStream $stream, ?int $userId = null): void
+    {
+        $tableName = $stream->getDynamicTableName();
+        $sql = null;
+
+        try {
+            if (Schema::hasTable($tableName)) {
+                Schema::drop($tableName);
+                $sql = "DROP TABLE {$tableName}";
+            }
+
+            $stream->update([
+                'table_created'  => false,
+            ]);
+
+            $this->logSchemaMigration($stream, $userId, 'drop_table', null, null, null, $sql, 'success');
+
+        } catch (\Throwable $e) {
+            $this->logSchemaMigration($stream, $userId, 'drop_table', null, null, null, $sql, 'error');
+            throw $e;
+        }
+    }
+
     protected function logSchemaMigration(
         DatawarehouseStream $stream,
         ?int $userId,

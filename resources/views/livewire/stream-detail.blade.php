@@ -50,6 +50,13 @@
                             Zurückholen
                         </x-ui-button>
                     @endif
+                    <button
+                        wire:click="openDeleteModal"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
+                        title="Datenstrom löschen"
+                    >
+                        @svg('heroicon-o-trash', 'w-4 h-4')
+                    </button>
                 </div>
             </div>
 
@@ -852,6 +859,78 @@
                         @svg('heroicon-o-check', 'w-4 h-4 mr-1')
                         Ändern
                     </x-ui-button>
+                </div>
+            </x-slot>
+        </x-ui-modal>
+
+        {{-- Delete Stream Modal --}}
+        <x-ui-modal wire:model="showDeleteModal" title="Datenstrom löschen" maxWidth="lg">
+            <div class="space-y-4">
+                @php $blockers = $this->deleteBlockers; @endphp
+
+                @if(!empty($blockers))
+                    <div class="p-4 rounded-lg bg-red-50 border border-red-200">
+                        <div class="flex items-start gap-3">
+                            @svg('heroicon-o-exclamation-triangle', 'w-5 h-5 text-red-500 shrink-0 mt-0.5')
+                            <div>
+                                <p class="text-sm font-medium text-red-800 mb-2">Dieser Datenstrom kann nicht gelöscht werden:</p>
+                                <ul class="text-sm text-red-700 space-y-1">
+                                    @foreach($blockers as $blocker)
+                                        <li class="flex items-center gap-1.5">
+                                            @svg('heroicon-o-x-circle', 'w-4 h-4 shrink-0')
+                                            {{ $blocker }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                <p class="text-xs text-red-600 mt-3">Entferne zuerst alle Relationen und Kennzahlen, die auf diesen Datenstrom verweisen.</p>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="p-4 rounded-lg bg-red-50 border border-red-200">
+                        <div class="flex items-start gap-3">
+                            @svg('heroicon-o-exclamation-triangle', 'w-5 h-5 text-red-500 shrink-0 mt-0.5')
+                            <div>
+                                <p class="text-sm font-medium text-red-800">Achtung: Diese Aktion kann nicht rückgängig gemacht werden!</p>
+                                <p class="text-sm text-red-700 mt-1">Der Datenstrom <strong>{{ $stream->name }}</strong> wird zusammen mit allen Daten, Spalten und Import-Historien endgültig gelöscht.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">
+                            Zum Bestätigen den Namen eingeben: <strong>{{ $stream->name }}</strong>
+                        </label>
+                        <input
+                            type="text"
+                            wire:model.live="deleteConfirmName"
+                            placeholder="{{ $stream->name }}"
+                            class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                        >
+                    </div>
+
+                    @if($deleteError)
+                        <p class="text-sm text-red-600">{{ $deleteError }}</p>
+                    @endif
+                @endif
+            </div>
+
+            <x-slot name="footer">
+                <div class="flex justify-end gap-2">
+                    <x-ui-button variant="secondary" size="sm" wire:click="cancelDelete">
+                        Abbrechen
+                    </x-ui-button>
+                    @if(empty($blockers))
+                        <x-ui-button
+                            variant="danger"
+                            size="sm"
+                            wire:click="deleteStream"
+                            @if(trim($deleteConfirmName) !== $stream->name) disabled @endif
+                        >
+                            @svg('heroicon-o-trash', 'w-4 h-4 mr-1')
+                            Endgültig löschen
+                        </x-ui-button>
+                    @endif
                 </div>
             </x-slot>
         </x-ui-modal>

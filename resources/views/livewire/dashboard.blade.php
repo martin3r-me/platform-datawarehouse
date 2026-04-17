@@ -59,6 +59,43 @@
                 />
             </div>
 
+            {{-- Kennzahlen --}}
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-[var(--ui-secondary)]">Kennzahlen</h2>
+                    <a href="{{ route('datawarehouse.kpi.create') }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--ui-border)] text-sm text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)] transition-colors">
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                        Neue Kennzahl
+                    </a>
+                </div>
+                @if($kpis->isNotEmpty())
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach($kpis as $kpi)
+                            <x-ui-dashboard-tile
+                                :title="$kpi->name"
+                                :count="$kpi->cached_value !== null ? (float) $kpi->cached_value : 0"
+                                :icon="$kpi->icon"
+                                :variant="$kpi->variant"
+                                :description="$kpi->unit"
+                                :href="route('datawarehouse.kpi.edit', $kpi)"
+                                clickable
+                            />
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-6 text-center rounded-lg border border-dashed border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                        <div class="mb-3">
+                            @svg('heroicon-o-chart-bar', 'w-10 h-10 text-[var(--ui-muted)] mx-auto')
+                        </div>
+                        <p class="text-sm text-[var(--ui-muted)] mb-3">Noch keine Kennzahlen erstellt</p>
+                        <a href="{{ route('datawarehouse.kpi.create') }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--ui-primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                            @svg('heroicon-o-plus', 'w-4 h-4')
+                            Erste Kennzahl erstellen
+                        </a>
+                    </div>
+                @endif
+            </div>
+
             {{-- Stream-Liste --}}
             <x-ui-panel title="Datenströme" subtitle="Alle konfigurierten Datenströme">
                 @if($streams->isEmpty())

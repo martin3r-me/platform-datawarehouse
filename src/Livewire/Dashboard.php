@@ -5,7 +5,9 @@ namespace Platform\Datawarehouse\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
+use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
+use Platform\Datawarehouse\Services\KpiQueryBuilder;
 
 class Dashboard extends Component
 {
@@ -33,9 +35,29 @@ class Dashboard extends Component
             'error'      => $streams->where('last_status', 'error')->count(),
         ];
 
+        // Load KPIs and refresh stale caches (max 5 per page load)
+        $kpis = DatawarehouseKpi::forTeam($team->id)
+            ->active()
+            ->orderBy('position')
+            ->get();
+
+        $builder = new KpiQueryBuilder();
+        $refreshed = 0;
+        foreach ($kpis as $kpi) {
+            if (!$kpi->isCacheValid() && $refreshed < 5) {
+                try {
+                    $builder->executeAndCache($kpi);
+                    $refreshed++;
+                } catch (\Throwable) {
+                    // Keep stale value or null — error is stored on the model
+                }
+            }
+        }
+
         return view('datawarehouse::livewire.dashboard', [
             'streams' => $streams,
             'stats'   => $stats,
+            'kpis'    => $kpis,
         ])->layout('platform::layouts.app');
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Platform\Datawarehouse\Jobs\PullStreamJob;
+use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
 use Platform\Datawarehouse\Models\DatawarehouseStreamRelation;
@@ -44,6 +45,11 @@ class StreamDetail extends Component
     public int $editingPrecision = 10;
     public int $editingScale = 2;
     public ?string $editingError = null;
+
+    // Delete State
+    public bool $showDeleteModal = false;
+    public ?string $deleteError = null;
+    public string $deleteConfirmName = '';
 
     // Relation State
     public bool $showRelationModal = false;
@@ -103,6 +109,91 @@ class StreamDetail extends Component
         if ($this->stream->status === 'archived') {
             $this->stream->update(['status' => 'paused']);
         }
+    }
+
+    // --- Delete stream ---
+
+    public function openDeleteModal(): void
+    {
+        $this->deleteError = null;
+        $this->deleteConfirmName = '';
+        $this->showDeleteModal = true;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->showDeleteModal = false;
+        $this->deleteError = null;
+        $this->deleteConfirmName = '';
+    }
+
+    /**
+     * Check if the stream can be deleted (no relations, no KPIs referencing it).
+     */
+    public function getDeleteBlockersProperty(): array
+    {
+        $blockers = [];
+
+        // Check for relations where this stream is referenced by others
+        $outgoing = $this->stream->outgoingRelations()->with('targetStream:id,name')->get();
+        $incoming = $this->stream->incomingRelations()->with('sourceStream:id,name')->get();
+
+        foreach ($outgoing as $rel) {
+            $blockers[] = "Relation '{$rel->label}' → {$rel->targetStream->name}";
+        }
+        foreach ($incoming as $rel) {
+            $blockers[] = "Relation '{$rel->label}' ← {$rel->sourceStream->name}";
+        }
+
+        // Check for KPIs that reference this stream
+        $kpis = DatawarehouseKpi::forTeam($this->stream->team_id)
+            ->whereNull('deleted_at')
+            ->get();
+
+        foreach ($kpis as $kpi) {
+            $streams = $kpi->definition['streams'] ?? [];
+            foreach ($streams as $s) {
+                if (($s['stream_id'] ?? null) == $this->stream->id) {
+                    $blockers[] = "Kennzahl '{$kpi->name}'";
+                    break;
+                }
+            }
+        }
+
+        return $blockers;
+    }
+
+    public function deleteStream(StreamSchemaService $schema): void
+    {
+        $this->deleteError = null;
+
+        // Verify name confirmation
+        if (trim($this->deleteConfirmName) !== $this->stream->name) {
+            $this->deleteError = 'Der eingegebene Name stimmt nicht überein.';
+            return;
+        }
+
+        // Re-check blockers
+        $blockers = $this->deleteBlockers;
+        if (!empty($blockers)) {
+            $this->deleteError = 'Löschen nicht möglich: ' . implode(', ', $blockers);
+            return;
+        }
+
+        // Drop the dynamic table
+        if ($this->stream->table_created) {
+            $schema->dropTable($this->stream, Auth::id());
+        }
+
+        // Delete related records
+        $this->stream->columns()->delete();
+        $this->stream->imports()->delete();
+        $this->stream->schemaMigrations()->delete();
+
+        // Soft-delete the stream
+        $this->stream->delete();
+
+        $this->redirect(route('datawarehouse.dashboard'));
     }
 
     public function triggerPull(): void
