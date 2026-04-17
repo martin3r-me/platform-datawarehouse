@@ -921,15 +921,14 @@
                         Abbrechen
                     </x-ui-button>
                     @if(empty($blockers))
-                        <x-ui-button
-                            variant="danger"
-                            size="sm"
+                        <button
                             wire:click="deleteStream"
-                            @if(trim($deleteConfirmName) !== $stream->name) disabled @endif
+                            {{ trim($deleteConfirmName) !== $stream->name ? 'disabled' : '' }}
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            @svg('heroicon-o-trash', 'w-4 h-4 mr-1')
+                            @svg('heroicon-o-trash', 'w-4 h-4')
                             Endgültig löschen
-                        </x-ui-button>
+                        </button>
                     @endif
                 </div>
             </x-slot>
