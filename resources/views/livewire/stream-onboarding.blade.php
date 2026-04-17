@@ -14,9 +14,18 @@
     <x-ui-page-container>
         <div class="space-y-6">
             {{-- Header --}}
-            <div>
-                <h1 class="text-2xl font-bold text-[var(--ui-secondary)]">{{ $stream->name }}</h1>
-                <p class="text-sm text-[var(--ui-muted)] mt-1">Datenstrom konfigurieren und aktivieren</p>
+            <div class="flex items-start justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-[var(--ui-secondary)]">{{ $stream->name }}</h1>
+                    <p class="text-sm text-[var(--ui-muted)] mt-1">Datenstrom konfigurieren und aktivieren</p>
+                </div>
+                <button
+                    wire:click="openDeleteModal"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
+                    title="Datenstrom löschen"
+                >
+                    @svg('heroicon-o-trash', 'w-4 h-4')
+                </button>
             </div>
 
             {{-- Stream Info --}}
@@ -333,4 +342,33 @@
             @endif
         </div>
     </x-ui-page-container>
+
+    {{-- Delete Modal --}}
+    <x-ui-modal wire:model="showDeleteModal" title="Datenstrom löschen">
+        <div class="p-4 space-y-4">
+            <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                @svg('heroicon-o-exclamation-triangle', 'w-4 h-4 inline -mt-0.5 mr-1')
+                Dieser Datenstrom und alle zugehörigen Daten werden unwiderruflich gelöscht.
+            </div>
+
+            <div>
+                <label class="block text-sm text-[var(--ui-secondary)] mb-1">
+                    Bitte gib <strong>{{ $stream->name }}</strong> ein, um zu bestätigen:
+                </label>
+                <input type="text" wire:model="deleteConfirmName"
+                    class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-red-500"
+                    placeholder="{{ $stream->name }}"
+                />
+            </div>
+        </div>
+
+        <div class="px-4 py-3 border-t border-[var(--ui-border)] flex justify-end gap-3">
+            <x-ui-button variant="secondary" wire:click="cancelDelete">Abbrechen</x-ui-button>
+            <x-ui-button variant="danger" wire:click="deleteStream"
+                :disabled="trim($deleteConfirmName) !== $stream->name">
+                @svg('heroicon-o-trash', 'w-4 h-4 mr-1')
+                Endgültig löschen
+            </x-ui-button>
+        </div>
+    </x-ui-modal>
 </x-ui-page>

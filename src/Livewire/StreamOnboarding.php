@@ -24,6 +24,10 @@ class StreamOnboarding extends Component
     public bool $fetchingSample = false;
     public ?string $sampleError = null;
 
+    // Delete State
+    public bool $showDeleteModal = false;
+    public string $deleteConfirmName = '';
+
     // Strategy configuration
     public string $syncStrategy = 'append';
     public ?string $naturalKeyField = null;
@@ -44,6 +48,32 @@ class StreamOnboarding extends Component
         $this->changeDetection = $stream->change_detection ?? true;
         $this->softDelete = $stream->soft_delete ?? false;
         $this->buildFieldsFromSample();
+    }
+
+    public function openDeleteModal(): void
+    {
+        $this->deleteConfirmName = '';
+        $this->showDeleteModal = true;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->showDeleteModal = false;
+        $this->deleteConfirmName = '';
+    }
+
+    public function deleteStream(): void
+    {
+        if (trim($this->deleteConfirmName) !== $this->stream->name) {
+            return;
+        }
+
+        $this->stream->columns()->delete();
+        $this->stream->imports()->delete();
+        $this->stream->schemaMigrations()->delete();
+        $this->stream->delete();
+
+        $this->redirect(route('datawarehouse.dashboard'));
     }
 
     public function updatedSyncStrategy(): void
