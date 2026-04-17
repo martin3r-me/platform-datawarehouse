@@ -111,6 +111,22 @@ class DatawarehouseStream extends Model
         return $this->belongsTo(DatawarehouseConnection::class, 'connection_id');
     }
 
+    /**
+     * Relations where this stream is the source (has FK columns).
+     */
+    public function outgoingRelations(): HasMany
+    {
+        return $this->hasMany(DatawarehouseStreamRelation::class, 'source_stream_id');
+    }
+
+    /**
+     * Relations where this stream is the lookup target.
+     */
+    public function incomingRelations(): HasMany
+    {
+        return $this->hasMany(DatawarehouseStreamRelation::class, 'target_stream_id');
+    }
+
     // --- Status helpers ---
 
     public function isOnboarding(): bool

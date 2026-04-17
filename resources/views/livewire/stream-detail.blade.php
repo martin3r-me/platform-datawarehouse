@@ -93,10 +93,11 @@
             <div class="border-b border-[var(--ui-border)]">
                 <nav class="flex gap-1">
                     @foreach([
-                        'overview' => 'Übersicht',
-                        'columns'  => 'Spalten',
-                        'data'     => 'Daten',
-                        'imports'  => 'Import-Historie',
+                        'overview'  => 'Übersicht',
+                        'columns'   => 'Spalten',
+                        'relations' => 'Relationen',
+                        'data'      => 'Daten',
+                        'imports'   => 'Import-Historie',
                     ] as $key => $label)
                         <button
                             wire:click="setTab('{{ $key }}')"
@@ -509,6 +510,107 @@
                 </x-ui-panel>
             @endif
 
+            {{-- Tab: Relationen --}}
+            @if($activeTab === 'relations')
+                <div class="space-y-6">
+                    {{-- Ausgehende Relationen (FK in diesem Stream) --}}
+                    <x-ui-panel title="Ausgehende Relationen" subtitle="Spalten in diesem Datenstrom, die auf andere Datenströme verweisen">
+                        <div class="p-4">
+                            @if($outgoingRelations->isEmpty())
+                                <div class="text-center text-sm text-[var(--ui-muted)] py-4">Keine ausgehenden Relationen definiert.</div>
+                            @else
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm">
+                                        <thead>
+                                            <tr class="border-b border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                                                <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Name</th>
+                                                <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Quell-Spalte</th>
+                                                <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase"></th>
+                                                <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Ziel-Datenstrom</th>
+                                                <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Ziel-Spalte</th>
+                                                <th class="text-right py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($outgoingRelations as $rel)
+                                                <tr class="border-b border-[var(--ui-border)]/50">
+                                                    <td class="py-2 px-3 font-medium text-[var(--ui-secondary)]">{{ $rel->label ?? '—' }}</td>
+                                                    <td class="py-2 px-3 font-mono text-xs text-[var(--ui-secondary)]">{{ $rel->source_column }}</td>
+                                                    <td class="py-2 px-3 text-[var(--ui-muted)]">→</td>
+                                                    <td class="py-2 px-3">
+                                                        <a href="{{ route('datawarehouse.stream.detail', $rel->target_stream_id) }}"
+                                                           class="text-[var(--ui-primary)] hover:underline text-sm">
+                                                            {{ $rel->targetStream->name ?? '?' }}
+                                                        </a>
+                                                    </td>
+                                                    <td class="py-2 px-3 font-mono text-xs text-[var(--ui-secondary)]">{{ $rel->target_column }}</td>
+                                                    <td class="py-2 px-3 text-right">
+                                                        <button
+                                                            wire:click="deleteRelation({{ $rel->id }})"
+                                                            wire:confirm="Relation '{{ $rel->label }}' wirklich löschen?"
+                                                            class="text-xs text-red-600 hover:text-red-800"
+                                                            title="Relation löschen"
+                                                        >
+                                                            @svg('heroicon-o-trash', 'w-4 h-4')
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+
+                            <div class="mt-4 pt-3 border-t border-[var(--ui-border)]">
+                                <x-ui-button variant="primary" size="sm" wire:click="openRelationModal">
+                                    @svg('heroicon-o-plus', 'w-4 h-4 mr-1')
+                                    Relation hinzufügen
+                                </x-ui-button>
+                            </div>
+                        </div>
+                    </x-ui-panel>
+
+                    {{-- Eingehende Relationen (andere Streams verweisen hierher) --}}
+                    @if($incomingRelations->isNotEmpty())
+                        <x-ui-panel title="Eingehende Relationen" subtitle="Andere Datenströme, die auf diesen Datenstrom verweisen">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                                            <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Name</th>
+                                            <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Quell-Datenstrom</th>
+                                            <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Quell-Spalte</th>
+                                            <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase"></th>
+                                            <th class="text-left py-2 px-3 text-xs font-bold text-[var(--ui-muted)] uppercase">Ziel-Spalte</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($incomingRelations as $rel)
+                                            <tr class="border-b border-[var(--ui-border)]/50">
+                                                <td class="py-2 px-3 font-medium text-[var(--ui-secondary)]">{{ $rel->label ?? '—' }}</td>
+                                                <td class="py-2 px-3">
+                                                    <a href="{{ route('datawarehouse.stream.detail', $rel->source_stream_id) }}"
+                                                       class="text-[var(--ui-primary)] hover:underline text-sm">
+                                                        {{ $rel->sourceStream->name ?? '?' }}
+                                                    </a>
+                                                </td>
+                                                <td class="py-2 px-3 font-mono text-xs text-[var(--ui-secondary)]">{{ $rel->source_column }}</td>
+                                                <td class="py-2 px-3 text-[var(--ui-muted)]">→</td>
+                                                <td class="py-2 px-3 font-mono text-xs text-[var(--ui-secondary)]">{{ $rel->target_column }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </x-ui-panel>
+                    @endif
+
+                    @if($flash)
+                        <div class="p-2 rounded bg-blue-50 border border-blue-200 text-blue-800 text-xs">{{ $flash }}</div>
+                    @endif
+                </div>
+            @endif
+
             {{-- Tab: Daten --}}
             @if($activeTab === 'data')
                 @php
@@ -606,6 +708,95 @@
                 </x-ui-panel>
             @endif
         </div>
+
+        {{-- Modal: Relation hinzufügen --}}
+        <x-ui-modal size="lg" wire:model="showRelationModal" :closeButton="true">
+            <x-slot name="header">
+                <h2 class="text-lg font-bold text-[var(--ui-secondary)]">Relation hinzufügen</h2>
+                <p class="text-xs text-[var(--ui-muted)] mt-0.5">
+                    Verknüpfe eine Spalte in <strong>{{ $stream->name }}</strong> mit einem anderen Datenstrom.
+                </p>
+            </x-slot>
+
+            <div class="space-y-4">
+                @if($relError)
+                    <div class="p-2 rounded bg-red-50 border border-red-200 text-red-800 text-xs">{{ $relError }}</div>
+                @endif
+
+                <div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800 flex items-start gap-2">
+                    @svg('heroicon-o-information-circle', 'w-4 h-4 shrink-0 mt-0.5')
+                    <span>
+                        Beispiel: Die Spalte <code>user_id</code> in „Tasks" verweist auf <code>id</code>
+                        im Datenstrom „Users". Relationname: <strong>Verantwortlicher</strong>.
+                    </span>
+                </div>
+
+                {{-- Relation Name --}}
+                <div>
+                    <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Name der Relation *</label>
+                    <input type="text" wire:model="relLabel" placeholder="z.B. Verantwortlicher, Kunde, Projekt"
+                        class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {{-- Source Column --}}
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Quell-Spalte (in {{ $stream->name }}) *</label>
+                        <select wire:model="relSourceColumn"
+                            class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                            <option value="">— wählen —</option>
+                            @foreach($columns ?? [] as $col)
+                                <option value="{{ $col->column_name }}">{{ $col->column_name }}{{ $col->label ? " ({$col->label})" : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Target Stream --}}
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Ziel-Datenstrom *</label>
+                        <select wire:model.live="relTargetStreamId"
+                            class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                            <option value="">— wählen —</option>
+                            @foreach($availableStreams ?? [] as $s)
+                                <option value="{{ $s->id }}">{{ $s->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Target Column --}}
+                @if($relTargetStreamId)
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--ui-muted)] mb-1">Ziel-Spalte *</label>
+                        <select wire:model="relTargetColumn"
+                            class="w-full px-3 py-2 text-sm rounded-md border border-[var(--ui-border)] bg-white text-[var(--ui-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20">
+                            <option value="">— wählen —</option>
+                            @foreach($this->targetColumns as $colName)
+                                <option value="{{ $colName }}">{{ $colName }}</option>
+                            @endforeach
+                        </select>
+                        @if($relTargetColumn)
+                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                {{ $stream->name }}.<strong>{{ $relSourceColumn ?: '?' }}</strong>
+                                → {{ collect($availableStreams)->firstWhere('id', $relTargetStreamId)?->name ?? '?' }}.<strong>{{ $relTargetColumn }}</strong>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+            </div>
+
+            <x-slot name="footer">
+                <div class="flex items-center justify-end gap-2">
+                    <x-ui-button variant="secondary" size="sm" wire:click="cancelRelation">
+                        Abbrechen
+                    </x-ui-button>
+                    <x-ui-button variant="primary" size="sm" wire:click="saveRelation">
+                        @svg('heroicon-o-link', 'w-4 h-4 mr-1')
+                        Relation anlegen
+                    </x-ui-button>
+                </div>
+            </x-slot>
+        </x-ui-modal>
 
         {{-- Modal: Spalten-Typ ändern --}}
         <x-ui-modal size="md" wire:model="showColumnEditModal" :closeButton="true">

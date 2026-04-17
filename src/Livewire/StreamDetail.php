@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Platform\Datawarehouse\Jobs\PullStreamJob;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
+use Platform\Datawarehouse\Models\DatawarehouseStreamRelation;
 use Platform\Datawarehouse\Services\StreamSchemaService;
 
 class StreamDetail extends Component
@@ -43,6 +44,14 @@ class StreamDetail extends Component
     public int $editingPrecision = 10;
     public int $editingScale = 2;
     public ?string $editingError = null;
+
+    // Relation State
+    public bool $showRelationModal = false;
+    public string $relSourceColumn = '';
+    public ?int $relTargetStreamId = null;
+    public string $relTargetColumn = '';
+    public string $relLabel = '';
+    public ?string $relError = null;
 
     public function mount(DatawarehouseStream $stream): void
     {
@@ -194,6 +203,129 @@ class StreamDetail extends Component
         $this->cancelColumnEdit();
     }
 
+    // --- Relation management ---
+
+    public function openRelationModal(): void
+    {
+        $this->relSourceColumn   = '';
+        $this->relTargetStreamId = null;
+        $this->relTargetColumn   = '';
+        $this->relLabel          = '';
+        $this->relError          = null;
+        $this->showRelationModal = true;
+    }
+
+    public function cancelRelation(): void
+    {
+        $this->showRelationModal = false;
+    }
+
+    /**
+     * Return columns of the selected target stream (for the modal dropdown).
+     */
+    public function getTargetColumnsProperty(): array
+    {
+        if (!$this->relTargetStreamId) {
+            return [];
+        }
+        $target = DatawarehouseStream::forTeam($this->stream->team_id)
+            ->find($this->relTargetStreamId);
+        if (!$target) {
+            return [];
+        }
+
+        return $target->columns()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->pluck('column_name')
+            ->toArray();
+    }
+
+    /**
+     * Pre-fill target column with the target stream's natural key.
+     */
+    public function updatedRelTargetStreamId(): void
+    {
+        $this->relTargetColumn = '';
+
+        if (!$this->relTargetStreamId) {
+            return;
+        }
+        $target = DatawarehouseStream::forTeam($this->stream->team_id)
+            ->find($this->relTargetStreamId);
+        if ($target && $target->natural_key) {
+            $this->relTargetColumn = $target->natural_key;
+        }
+    }
+
+    public function saveRelation(): void
+    {
+        $this->relError = null;
+
+        if ($this->relSourceColumn === '') {
+            $this->relError = 'Bitte eine Quell-Spalte wählen.';
+            return;
+        }
+        if (!$this->relTargetStreamId) {
+            $this->relError = 'Bitte einen Ziel-Datenstrom wählen.';
+            return;
+        }
+        if ($this->relTargetColumn === '') {
+            $this->relError = 'Bitte eine Ziel-Spalte wählen.';
+            return;
+        }
+        if (trim($this->relLabel) === '') {
+            $this->relError = 'Bitte einen Namen für die Relation vergeben.';
+            return;
+        }
+
+        // Ensure target stream belongs to same team.
+        $target = DatawarehouseStream::forTeam($this->stream->team_id)
+            ->find($this->relTargetStreamId);
+        if (!$target) {
+            $this->relError = 'Ziel-Datenstrom nicht gefunden.';
+            return;
+        }
+
+        // Prevent duplicates.
+        $exists = DatawarehouseStreamRelation::where('source_stream_id', $this->stream->id)
+            ->where('source_column', $this->relSourceColumn)
+            ->where('target_stream_id', $target->id)
+            ->exists();
+        if ($exists) {
+            $this->relError = "Für '{$this->relSourceColumn}' existiert bereits eine Relation zu diesem Ziel.";
+            return;
+        }
+
+        DatawarehouseStreamRelation::create([
+            'team_id'          => $this->stream->team_id,
+            'source_stream_id' => $this->stream->id,
+            'source_column'    => $this->relSourceColumn,
+            'target_stream_id' => $target->id,
+            'target_column'    => $this->relTargetColumn,
+            'label'            => trim($this->relLabel),
+        ]);
+
+        $this->flash = "Relation '{$this->relLabel}' angelegt: {$this->relSourceColumn} → {$target->name}.{$this->relTargetColumn}";
+        $this->showRelationModal = false;
+    }
+
+    public function deleteRelation(int $relationId): void
+    {
+        $relation = DatawarehouseStreamRelation::where('id', $relationId)
+            ->where(function ($q) {
+                $q->where('source_stream_id', $this->stream->id)
+                  ->orWhere('target_stream_id', $this->stream->id);
+            })
+            ->first();
+
+        if ($relation) {
+            $label = $relation->label ?: $relation->source_column;
+            $relation->delete();
+            $this->flash = "Relation '{$label}' wurde gelöscht.";
+        }
+    }
+
     public function render()
     {
         $imports = $this->stream->imports()
@@ -225,13 +357,33 @@ class StreamDetail extends Component
             ->limit(20)
             ->get();
 
+        // Relations: outgoing (this stream references others) + incoming
+        // (other streams reference this one).
+        $outgoingRelations = $this->stream->outgoingRelations()
+            ->with('targetStream:id,name,slug')
+            ->get();
+        $incomingRelations = $this->stream->incomingRelations()
+            ->with('sourceStream:id,name,slug')
+            ->get();
+
+        // Available target streams for the relation modal (same team, excl. self).
+        $availableStreams = $this->activeTab === 'relations'
+            ? DatawarehouseStream::forTeam($this->stream->team_id)
+                ->where('id', '!=', $this->stream->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug', 'natural_key'])
+            : collect();
+
         return view('datawarehouse::livewire.stream-detail', [
-            'imports'          => $imports,
-            'columns'          => $columns,
-            'rowCount'         => $rowCount,
-            'rows'             => $rows,
-            'connection'       => $connection,
-            'schemaMigrations' => $schemaMigrations,
+            'imports'            => $imports,
+            'columns'            => $columns,
+            'rowCount'           => $rowCount,
+            'rows'               => $rows,
+            'connection'         => $connection,
+            'schemaMigrations'   => $schemaMigrations,
+            'outgoingRelations'  => $outgoingRelations,
+            'incomingRelations'  => $incomingRelations,
+            'availableStreams'    => $availableStreams,
         ])->layout('platform::layouts.app');
     }
 }
