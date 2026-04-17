@@ -345,27 +345,16 @@
 
     {{-- Delete Modal --}}
     <x-ui-modal wire:model="showDeleteModal" title="Datenstrom löschen">
-        <div class="p-4 space-y-4">
+        <div class="p-4">
             <div class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
                 @svg('heroicon-o-exclamation-triangle', 'w-4 h-4 inline -mt-0.5 mr-1')
-                Dieser Datenstrom und alle zugehörigen Daten werden unwiderruflich gelöscht.
-            </div>
-
-            <div>
-                <label class="block text-sm text-[var(--ui-secondary)] mb-1">
-                    Bitte gib <strong>{{ $stream->name }}</strong> ein, um zu bestätigen:
-                </label>
-                <input type="text" wire:model="deleteConfirmName"
-                    class="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-2 text-sm text-[var(--ui-secondary)] focus:outline-none focus:ring-1 focus:ring-red-500"
-                    placeholder="{{ $stream->name }}"
-                />
+                <strong>{{ $stream->name }}</strong> und alle zugehörigen Daten werden unwiderruflich gelöscht.
             </div>
         </div>
 
         <div class="px-4 py-3 border-t border-[var(--ui-border)] flex justify-end gap-3">
             <x-ui-button variant="secondary" wire:click="cancelDelete">Abbrechen</x-ui-button>
-            <x-ui-button variant="danger" wire:click="deleteStream"
-                :disabled="trim($deleteConfirmName) !== $stream->name">
+            <x-ui-button variant="danger" wire:click="deleteStream">
                 @svg('heroicon-o-trash', 'w-4 h-4 mr-1')
                 Endgültig löschen
             </x-ui-button>

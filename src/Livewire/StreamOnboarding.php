@@ -26,7 +26,6 @@ class StreamOnboarding extends Component
 
     // Delete State
     public bool $showDeleteModal = false;
-    public string $deleteConfirmName = '';
 
     // Strategy configuration
     public string $syncStrategy = 'append';
@@ -52,22 +51,16 @@ class StreamOnboarding extends Component
 
     public function openDeleteModal(): void
     {
-        $this->deleteConfirmName = '';
         $this->showDeleteModal = true;
     }
 
     public function cancelDelete(): void
     {
         $this->showDeleteModal = false;
-        $this->deleteConfirmName = '';
     }
 
     public function deleteStream(): void
     {
-        if (trim($this->deleteConfirmName) !== $this->stream->name) {
-            return;
-        }
-
         $this->stream->columns()->delete();
         $this->stream->imports()->delete();
         $this->stream->schemaMigrations()->delete();
