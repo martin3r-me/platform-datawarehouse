@@ -65,6 +65,12 @@ class DatawarehouseServiceProvider extends ServiceProvider
         $this->registerLivewireComponents();
         $this->registerPullProviders();
 
+        // Error Reporter Registration
+        try {
+            resolve(\Platform\Core\Services\ErrorReporterRegistry::class)
+                ->register('datawarehouse', 'Platform\\Datawarehouse');
+        } catch (\Throwable $e) {}
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 DispatchPullStreamsCommand::class,
