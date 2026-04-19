@@ -274,6 +274,129 @@
                         </button>
                     </div>
                 </x-ui-panel>
+
+                {{-- Calendar Filters --}}
+                <x-ui-panel title="Kalenderfilter" subtitle="Filtere nach Feiertagen, Wochenenden, KW und mehr">
+                    <div class="space-y-4">
+                        {{-- Toggle --}}
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <button
+                                type="button"
+                                wire:click="toggleCalendar"
+                                class="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
+                                    {{ $calendarEnabled ? 'bg-[var(--ui-primary)]' : 'bg-[var(--ui-muted)]/30' }}"
+                                role="switch"
+                                aria-checked="{{ $calendarEnabled ? 'true' : 'false' }}"
+                            >
+                                <span class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                    {{ $calendarEnabled ? 'translate-x-5' : 'translate-x-0' }}"></span>
+                            </button>
+                            <span class="text-sm font-medium text-[var(--ui-secondary)]">Kalenderfilter aktivieren</span>
+                        </label>
+
+                        @if($calendarEnabled)
+                            {{-- Date Column Picker --}}
+                            <div>
+                                <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Datumsspalte</label>
+                                <select
+                                    wire:model.live="calDateColumn"
+                                    class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/50"
+                                >
+                                    <option value="">— Datumsspalte wählen —</option>
+                                    @foreach($this->dateColumns as $alias => $group)
+                                        <optgroup label="{{ $group['stream_name'] }} ({{ $alias }})">
+                                            @foreach($group['columns'] as $col)
+                                                <option
+                                                    value="{{ $col->column_name }}"
+                                                    @if($calDateColumn === $col->column_name && $calDateStreamAlias === $alias) selected @endif
+                                                    wire:click="$set('calDateStreamAlias', '{{ $alias }}')"
+                                                >
+                                                    {{ $col->label ?? $col->column_name }} ({{ $col->data_type }})
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Stream alias for date column (multi-stream) --}}
+                            @if($calDateColumn && count($selectedStreams) > 1)
+                                <div>
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Aus Datenstrom</label>
+                                    <select
+                                        wire:model.live="calDateStreamAlias"
+                                        class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/50"
+                                    >
+                                        @foreach($this->dateColumns as $alias => $group)
+                                            @php $hasCol = $group['columns']->contains('column_name', $calDateColumn); @endphp
+                                            @if($hasCol)
+                                                <option value="{{ $alias }}">{{ $group['stream_name'] }} ({{ $alias }})</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
+
+                            {{-- Calendar Conditions --}}
+                            <div class="space-y-3">
+                                <label class="block text-sm font-medium text-[var(--ui-secondary)]">Bedingungen</label>
+                                @forelse($calendarConditions as $cIndex => $cond)
+                                    <div class="flex items-center gap-2 p-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40" wire:key="cal-cond-{{ $cIndex }}">
+                                        <select
+                                            wire:model.live="calendarConditions.{{ $cIndex }}.column"
+                                            class="flex-1 min-w-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-2 py-1.5 text-sm"
+                                        >
+                                            <option value="">Eigenschaft...</option>
+                                            <option value="is_weekend">Wochenende</option>
+                                            <option value="is_feiertag">Feiertag</option>
+                                            <option value="weekday_num">Wochentag (1-7)</option>
+                                            <option value="kw">Kalenderwoche</option>
+                                            <option value="month">Monat (1-12)</option>
+                                            <option value="quarter">Quartal (1-4)</option>
+                                            <option value="year">Jahr</option>
+                                            <option value="is_schulferien">Schulferien</option>
+                                        </select>
+                                        <select
+                                            wire:model.live="calendarConditions.{{ $cIndex }}.operator"
+                                            class="w-20 shrink-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-2 py-1.5 text-sm"
+                                        >
+                                            @foreach(['=' => '=', '!=' => '!=', '<' => '<', '>' => '>', '<=' => '<=', '>=' => '>='] as $op => $opLabel)
+                                                <option value="{{ $op }}">{{ $opLabel }}</option>
+                                            @endforeach
+                                        </select>
+                                        @php $colType = $cond['column'] ?? ''; @endphp
+                                        @if(in_array($colType, ['is_weekend', 'is_feiertag', 'is_schulferien']))
+                                            <select
+                                                wire:model.live="calendarConditions.{{ $cIndex }}.value"
+                                                class="flex-1 min-w-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-2 py-1.5 text-sm"
+                                            >
+                                                <option value="">Wert...</option>
+                                                <option value="1">Ja</option>
+                                                <option value="0">Nein</option>
+                                            </select>
+                                        @else
+                                            <input
+                                                type="text"
+                                                wire:model.live="calendarConditions.{{ $cIndex }}.value"
+                                                placeholder="Wert"
+                                                class="flex-1 min-w-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/50"
+                                            >
+                                        @endif
+                                        <button wire:click="removeCalendarCondition({{ $cIndex }})" class="text-[var(--ui-muted)] hover:text-red-500 transition-colors shrink-0">
+                                            @svg('heroicon-o-x-mark', 'w-4 h-4')
+                                        </button>
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-[var(--ui-muted)]">Keine Kalenderbedingungen definiert.</p>
+                                @endforelse
+                                <button wire:click="addCalendarCondition" class="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--ui-border)] hover:border-[var(--ui-primary)] hover:bg-[var(--ui-primary)]/5 transition-colors text-sm text-[var(--ui-muted)] hover:text-[var(--ui-primary)]">
+                                    @svg('heroicon-o-plus', 'w-4 h-4')
+                                    Bedingung hinzufügen
+                                </button>
+                            </div>
+                        @endif
+                    </div>
+                </x-ui-panel>
             @endif
 
             {{-- Step 4: Vorschau & Speichern --}}

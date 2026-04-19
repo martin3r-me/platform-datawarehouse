@@ -35,6 +35,12 @@ class KpiEditor extends Component
     // Step 3: Filters
     public array $filters = []; // [{stream_alias, column, operator, value}]
 
+    // Step 3: Calendar Filters
+    public bool $calendarEnabled = false;
+    public string $calDateColumn = '';
+    public string $calDateStreamAlias = 's0';
+    public array $calendarConditions = []; // [{column, operator, value}]
+
     // Preview
     public ?string $previewValue = null;
     public ?string $previewError = null;
@@ -62,6 +68,14 @@ class KpiEditor extends Component
             $this->aggFunction = $agg['function'] ?? 'SUM';
             $this->aggColumn = $agg['column'] ?? '';
             $this->aggStreamAlias = $agg['stream_alias'] ?? 's0';
+
+            $cal = $definition['calendar_filters'] ?? null;
+            if ($cal) {
+                $this->calendarEnabled = true;
+                $this->calDateColumn = $cal['date_column'] ?? '';
+                $this->calDateStreamAlias = $cal['date_stream_alias'] ?? 's0';
+                $this->calendarConditions = $cal['conditions'] ?? [];
+            }
         }
     }
 
@@ -219,6 +233,62 @@ class KpiEditor extends Component
         $this->filters = array_values($this->filters);
     }
 
+    // --- Step 3: Calendar Filters ---
+
+    public function toggleCalendar(): void
+    {
+        $this->calendarEnabled = !$this->calendarEnabled;
+
+        if (!$this->calendarEnabled) {
+            $this->calDateColumn = '';
+            $this->calDateStreamAlias = 's0';
+            $this->calendarConditions = [];
+        }
+    }
+
+    public function addCalendarCondition(): void
+    {
+        $this->calendarConditions[] = [
+            'column'   => 'is_weekend',
+            'operator' => '=',
+            'value'    => '',
+        ];
+    }
+
+    public function removeCalendarCondition(int $index): void
+    {
+        unset($this->calendarConditions[$index]);
+        $this->calendarConditions = array_values($this->calendarConditions);
+    }
+
+    #[Computed]
+    public function dateColumns(): array
+    {
+        $result = [];
+
+        foreach ($this->selectedStreams as $streamDef) {
+            $stream = DatawarehouseStream::find($streamDef['stream_id']);
+            if (!$stream) {
+                continue;
+            }
+
+            $columns = DatawarehouseStreamColumn::where('stream_id', $stream->id)
+                ->where('is_active', true)
+                ->whereIn('data_type', ['date', 'datetime'])
+                ->orderBy('position')
+                ->get();
+
+            if ($columns->isNotEmpty()) {
+                $result[$streamDef['alias']] = [
+                    'stream_name' => $stream->name,
+                    'columns'     => $columns,
+                ];
+            }
+        }
+
+        return $result;
+    }
+
     // --- Step 4: Preview ---
 
     public function preview(): void
@@ -255,6 +325,17 @@ class KpiEditor extends Component
             'filters'       => array_values(array_filter($this->filters, fn($f) => !empty($f['column']))),
             'snapshot_mode' => 'latest',
         ];
+
+        if ($this->calendarEnabled && $this->calDateColumn) {
+            $definition['calendar_filters'] = [
+                'date_column'        => $this->calDateColumn,
+                'date_stream_alias'  => $this->calDateStreamAlias,
+                'conditions'         => array_values(array_filter(
+                    $this->calendarConditions,
+                    fn($c) => !empty($c['column']) && $c['value'] !== '',
+                )),
+            ];
+        }
 
         $data = [
             'name'       => $this->name,
@@ -375,9 +456,7 @@ class KpiEditor extends Component
     {
         $team = Auth::user()->currentTeam;
 
-        $kpi = new DatawarehouseKpi();
-        $kpi->team_id = $team->id;
-        $kpi->definition = [
+        $definition = [
             'streams'       => $this->selectedStreams,
             'aggregation'   => [
                 'function'     => $this->aggFunction,
@@ -387,6 +466,21 @@ class KpiEditor extends Component
             'filters'       => array_values(array_filter($this->filters, fn($f) => !empty($f['column']))),
             'snapshot_mode' => 'latest',
         ];
+
+        if ($this->calendarEnabled && $this->calDateColumn) {
+            $definition['calendar_filters'] = [
+                'date_column'        => $this->calDateColumn,
+                'date_stream_alias'  => $this->calDateStreamAlias,
+                'conditions'         => array_values(array_filter(
+                    $this->calendarConditions,
+                    fn($c) => !empty($c['column']) && $c['value'] !== '',
+                )),
+            ];
+        }
+
+        $kpi = new DatawarehouseKpi();
+        $kpi->team_id = $team->id;
+        $kpi->definition = $definition;
 
         return $kpi;
     }

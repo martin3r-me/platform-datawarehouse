@@ -15,6 +15,13 @@ class KpiQueryBuilder
     private const COLUMN_REGEX = '/^[a-zA-Z_][a-zA-Z0-9_]*$/';
     private const ALIAS_REGEX = '/^s\d+$/';
 
+    private const CALENDAR_ALIAS = '_cal';
+    private const CALENDAR_TABLE = 'dw_dim_date';
+    private const CALENDAR_COLUMNS = [
+        'weekday', 'weekday_num', 'is_weekend', 'kw', 'month', 'quarter', 'year',
+        'is_feiertag', 'feiertag_name', 'is_schulferien', 'schulferien_name', 'bundesland',
+    ];
+
     /**
      * Execute a KPI query and return the result.
      */
@@ -78,6 +85,12 @@ class KpiQueryBuilder
             } else {
                 $query->join($joinTable, $leftColumn, '=', $rightColumn);
             }
+        }
+
+        // Apply calendar filters (JOIN on dw_dim_date)
+        $calendarFilters = $definition['calendar_filters'] ?? null;
+        if ($calendarFilters) {
+            $this->applyCalendarFilters($query, $calendarFilters);
         }
 
         // Apply snapshot filter for snapshot-strategy streams
@@ -198,6 +211,54 @@ class KpiQueryBuilder
         }
 
         throw new \InvalidArgumentException("No alias found for stream {$streamId} in definition.");
+    }
+
+    /**
+     * Apply calendar dimension filters by joining dw_dim_date.
+     */
+    private function applyCalendarFilters($query, array $calendarFilters): void
+    {
+        $dateColumn = $calendarFilters['date_column'] ?? null;
+        $dateAlias = $calendarFilters['date_stream_alias'] ?? 's0';
+        $conditions = $calendarFilters['conditions'] ?? [];
+
+        if (!$dateColumn || empty($conditions)) {
+            return;
+        }
+
+        $this->validateColumnName($dateColumn);
+        $this->validateAlias($dateAlias);
+
+        $calAlias = self::CALENDAR_ALIAS;
+        $calTable = self::CALENDAR_TABLE . ' as ' . $calAlias;
+
+        // DATE cast to support both date and datetime source columns
+        $joinLeft = DB::raw("DATE({$dateAlias}.{$dateColumn})");
+
+        $query->leftJoin($calTable, $joinLeft, '=', $calAlias . '.date_key');
+
+        foreach ($conditions as $condition) {
+            $column = $condition['column'] ?? '';
+            $operator = $condition['operator'] ?? '=';
+            $value = $condition['value'] ?? '';
+
+            if (!in_array($column, self::CALENDAR_COLUMNS, true)) {
+                throw new \InvalidArgumentException("Invalid calendar column: {$column}");
+            }
+
+            if (!in_array($operator, self::ALLOWED_OPERATORS, true)) {
+                throw new \InvalidArgumentException("Invalid operator in calendar filter: {$operator}");
+            }
+
+            // Cast boolean-looking values
+            if ($value === true || $value === 'true') {
+                $value = 1;
+            } elseif ($value === false || $value === 'false') {
+                $value = 0;
+            }
+
+            $query->where("{$calAlias}.{$column}", $operator, $value);
+        }
     }
 
     /**

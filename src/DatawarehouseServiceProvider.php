@@ -11,8 +11,11 @@ use Livewire\Livewire;
 use Platform\Core\PlatformCore;
 use Platform\Core\Routing\ModuleRouter;
 use Platform\Datawarehouse\Console\Commands\DispatchPullStreamsCommand;
+use Platform\Datawarehouse\Console\Commands\SeedDimDateCommand;
+use Platform\Datawarehouse\Providers\FeiertagNrw\FeiertagNrwProvider;
 use Platform\Datawarehouse\Providers\Lexoffice\LexofficeProvider;
 use Platform\Datawarehouse\Providers\ProviderRegistry;
+use Platform\Datawarehouse\Providers\SchulferienNrw\SchulferienNrwProvider;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -71,9 +74,12 @@ class DatawarehouseServiceProvider extends ServiceProvider
                 ->register('datawarehouse', 'Platform\\Datawarehouse');
         } catch (\Throwable $e) {}
 
+        $this->ensureDimDateSeeded();
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 DispatchPullStreamsCommand::class,
+                SeedDimDateCommand::class,
             ]);
 
             // Run the dispatcher every minute; it handles per-stream schedule gating.
@@ -92,6 +98,26 @@ class DatawarehouseServiceProvider extends ServiceProvider
         /** @var ProviderRegistry $registry */
         $registry = $this->app->make(ProviderRegistry::class);
         $registry->register(new LexofficeProvider());
+        $registry->register(new FeiertagNrwProvider());
+        $registry->register(new SchulferienNrwProvider());
+    }
+
+    protected function ensureDimDateSeeded(): void
+    {
+        try {
+            if (!Schema::hasTable('dw_dim_date')) {
+                return;
+            }
+
+            if (\Illuminate\Support\Facades\DB::table('dw_dim_date')->exists()) {
+                return;
+            }
+
+            $service = new \Platform\Datawarehouse\Services\DateDimensionService();
+            $service->seed();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Datawarehouse: dim_date auto-seed failed: ' . $e->getMessage());
+        }
     }
 
     protected function registerLivewireComponents(): void
