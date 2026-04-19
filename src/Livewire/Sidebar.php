@@ -3,6 +3,8 @@
 namespace Platform\Datawarehouse\Livewire;
 
 use Livewire\Component;
+use Platform\Datawarehouse\Models\DatawarehouseDashboard;
+use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 
 class Sidebar extends Component
@@ -15,6 +17,8 @@ class Sidebar extends Component
             return view('datawarehouse::livewire.sidebar', [
                 'systemStreams' => collect(),
                 'userStreams'   => collect(),
+                'kpis'         => collect(),
+                'dashboards'   => collect(),
             ]);
         }
 
@@ -32,9 +36,20 @@ class Sidebar extends Component
             ->orderBy('name')
             ->get();
 
+        $kpis = DatawarehouseKpi::forTeam($teamId)
+            ->whereIn('status', ['active', 'draft', 'error'])
+            ->orderBy('position')
+            ->get();
+
+        $dashboards = DatawarehouseDashboard::forTeam($teamId)
+            ->orderBy('position')
+            ->get();
+
         return view('datawarehouse::livewire.sidebar', [
             'systemStreams' => $systemStreams,
             'userStreams'   => $userStreams,
+            'kpis'         => $kpis,
+            'dashboards'   => $dashboards,
         ]);
     }
 }

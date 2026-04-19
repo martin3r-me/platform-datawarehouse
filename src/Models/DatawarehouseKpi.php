@@ -5,6 +5,7 @@ namespace Platform\Datawarehouse\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -67,6 +68,13 @@ class DatawarehouseKpi extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(DatawarehouseKpiSnapshot::class, 'kpi_id');
+    }
+
+    public function dashboards(): BelongsToMany
+    {
+        return $this->belongsToMany(DatawarehouseDashboard::class, 'datawarehouse_dashboard_kpis', 'kpi_id', 'dashboard_id')
+            ->withPivot('position')
+            ->withTimestamps();
     }
 
     // --- Scopes ---

@@ -10,6 +10,32 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
+    <x-ui-sidebar-list label="Kennzahlen">
+        @foreach($kpis as $kpi)
+            <x-ui-sidebar-item :href="route('datawarehouse.kpi.detail', $kpi)">
+                @svg('heroicon-o-' . $kpi->icon, 'w-4 h-4 text-[var(--ui-secondary)]')
+                <span class="ml-2 text-sm truncate">{{ $kpi->name }}</span>
+            </x-ui-sidebar-item>
+        @endforeach
+        <x-ui-sidebar-item :href="route('datawarehouse.kpi.create')">
+            @svg('heroicon-o-plus', 'w-4 h-4 text-[var(--ui-muted)]')
+            <span class="ml-2 text-sm text-[var(--ui-muted)]">Neue Kennzahl</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
+    <x-ui-sidebar-list label="Dashboards">
+        @foreach($dashboards as $dashboard)
+            <x-ui-sidebar-item :href="route('datawarehouse.dashboard.view', $dashboard)">
+                @svg('heroicon-o-' . $dashboard->icon, 'w-4 h-4 text-[var(--ui-secondary)]')
+                <span class="ml-2 text-sm truncate">{{ $dashboard->name }}</span>
+            </x-ui-sidebar-item>
+        @endforeach
+        <x-ui-sidebar-item :href="route('datawarehouse.dashboard.create')">
+            @svg('heroicon-o-plus', 'w-4 h-4 text-[var(--ui-muted)]')
+            <span class="ml-2 text-sm text-[var(--ui-muted)]">Neues Dashboard</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
     <x-ui-sidebar-list label="Quellen">
         <x-ui-sidebar-item :href="route('datawarehouse.connections')">
             @svg('heroicon-o-link', 'w-4 h-4 text-[var(--ui-secondary)]')
@@ -57,6 +83,12 @@
         <div class="flex flex-col gap-2">
             <a href="{{ route('datawarehouse.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Übersicht">
                 @svg('heroicon-o-circle-stack', 'w-5 h-5')
+            </a>
+            <a href="{{ route('datawarehouse.kpi.create') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Kennzahlen">
+                @svg('heroicon-o-chart-bar', 'w-5 h-5')
+            </a>
+            <a href="{{ route('datawarehouse.dashboard.create') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Dashboards">
+                @svg('heroicon-o-squares-2x2', 'w-5 h-5')
             </a>
             <a href="{{ route('datawarehouse.connections') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Verbindungen">
                 @svg('heroicon-o-link', 'w-5 h-5')

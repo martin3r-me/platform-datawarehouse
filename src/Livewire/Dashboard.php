@@ -5,6 +5,7 @@ namespace Platform\Datawarehouse\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
+use Platform\Datawarehouse\Models\DatawarehouseDashboard;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Services\KpiQueryBuilder;
@@ -160,12 +161,18 @@ class Dashboard extends Component
             }
         }
 
+        $dashboards = DatawarehouseDashboard::forTeam($team->id)
+            ->withCount('kpis')
+            ->orderBy('position')
+            ->get();
+
         return view('datawarehouse::livewire.dashboard', [
             'systemStreams' => $systemStreams,
             'userStreams'   => $userStreams,
             'streams'       => $userStreams,
             'stats'         => $stats,
             'kpis'          => $kpis,
+            'dashboards'    => $dashboards,
         ])->layout('platform::layouts.app');
     }
 }

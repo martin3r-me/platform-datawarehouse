@@ -168,6 +168,53 @@
                 </div>
             @endif
 
+            {{-- Dashboards --}}
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-[var(--ui-secondary)]">Dashboards</h2>
+                    <a href="{{ route('datawarehouse.dashboard.create') }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--ui-border)] text-sm text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)] transition-colors">
+                        @svg('heroicon-o-plus', 'w-4 h-4')
+                        Neues Dashboard
+                    </a>
+                </div>
+                @if($dashboards->isNotEmpty())
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach($dashboards as $db)
+                            <a
+                                href="{{ route('datawarehouse.dashboard.view', $db) }}"
+                                class="p-4 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-bg)] hover:bg-[var(--ui-muted-5)] transition-colors block"
+                            >
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-9 h-9 rounded-lg bg-[var(--ui-muted-5)] flex items-center justify-center">
+                                        @svg('heroicon-o-' . $db->icon, 'w-5 h-5 text-[var(--ui-secondary)]')
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="font-medium text-[var(--ui-secondary)] truncate">{{ $db->name }}</div>
+                                    </div>
+                                </div>
+                                @if($db->description)
+                                    <p class="text-xs text-[var(--ui-muted)] mb-2 line-clamp-2">{{ $db->description }}</p>
+                                @endif
+                                <div class="text-xs text-[var(--ui-muted)]">
+                                    {{ $db->kpis_count }} {{ $db->kpis_count === 1 ? 'Kennzahl' : 'Kennzahlen' }}
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="p-6 text-center rounded-lg border border-dashed border-[var(--ui-border)] bg-[var(--ui-muted-5)]">
+                        <div class="mb-3">
+                            @svg('heroicon-o-squares-2x2', 'w-10 h-10 text-[var(--ui-muted)] mx-auto')
+                        </div>
+                        <p class="text-sm text-[var(--ui-muted)] mb-3">Noch keine Dashboards erstellt</p>
+                        <a href="{{ route('datawarehouse.dashboard.create') }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--ui-primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity">
+                            @svg('heroicon-o-plus', 'w-4 h-4')
+                            Erstes Dashboard erstellen
+                        </a>
+                    </div>
+                @endif
+            </div>
+
             {{-- Stammdaten --}}
             @if($systemStreams->isNotEmpty())
                 <x-ui-panel title="Stammdaten" subtitle="System-Lookup-Tabellen">
