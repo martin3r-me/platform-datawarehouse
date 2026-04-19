@@ -39,7 +39,7 @@ class KpiEditor extends Component
     public bool $calendarEnabled = false;
     public string $calDateColumn = '';
     public string $calDateStreamAlias = 's0';
-    public ?string $calDateRange = null;
+    public ?string $displayRange = 'current_month';
     public array $calendarConditions = []; // [{column, operator, value}]
 
     // Preview
@@ -75,9 +75,11 @@ class KpiEditor extends Component
                 $this->calendarEnabled = true;
                 $this->calDateColumn = $cal['date_column'] ?? '';
                 $this->calDateStreamAlias = $cal['date_stream_alias'] ?? 's0';
-                $this->calDateRange = $cal['date_range'] ?? null;
                 $this->calendarConditions = $cal['conditions'] ?? [];
             }
+
+            // Load display_range from model (fallback: old calendar_filters.date_range)
+            $this->displayRange = $kpi->display_range ?? $cal['date_range'] ?? 'current_month';
         }
     }
 
@@ -244,7 +246,7 @@ class KpiEditor extends Component
         if (!$this->calendarEnabled) {
             $this->calDateColumn = '';
             $this->calDateStreamAlias = 's0';
-            $this->calDateRange = null;
+            $this->displayRange = 'current_month';
             $this->calendarConditions = [];
         }
     }
@@ -302,7 +304,9 @@ class KpiEditor extends Component
         try {
             $kpi = $this->buildKpiModel();
             $builder = new KpiQueryBuilder();
-            $value = $builder->execute($kpi);
+            $value = ($kpi->hasDateColumn() && $kpi->display_range)
+                ? $builder->executeForRange($kpi, $kpi->display_range)
+                : $builder->execute($kpi);
             $this->previewValue = $this->formatValue($value);
         } catch (\Throwable $e) {
             $this->previewError = $e->getMessage();
@@ -339,22 +343,19 @@ class KpiEditor extends Component
                 )),
             ];
 
-            if ($this->calDateRange) {
-                $calFilters['date_range'] = $this->calDateRange;
-            }
-
             $definition['calendar_filters'] = $calFilters;
         }
 
         $data = [
-            'name'       => $this->name,
-            'icon'       => $this->icon,
-            'variant'    => $this->variant,
-            'unit'       => $this->unit ?: null,
-            'format'     => $this->format,
-            'decimals'   => $this->decimals,
-            'definition' => $definition,
-            'status'     => 'active',
+            'name'          => $this->name,
+            'icon'          => $this->icon,
+            'variant'       => $this->variant,
+            'unit'          => $this->unit ?: null,
+            'format'        => $this->format,
+            'decimals'      => $this->decimals,
+            'definition'    => $definition,
+            'display_range' => ($this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null,
+            'status'        => 'active',
         ];
 
         if ($this->kpiId) {
@@ -486,16 +487,13 @@ class KpiEditor extends Component
                 )),
             ];
 
-            if ($this->calDateRange) {
-                $calFilters['date_range'] = $this->calDateRange;
-            }
-
             $definition['calendar_filters'] = $calFilters;
         }
 
         $kpi = new DatawarehouseKpi();
         $kpi->team_id = $team->id;
         $kpi->definition = $definition;
+        $kpi->display_range = ($this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null;
 
         return $kpi;
     }

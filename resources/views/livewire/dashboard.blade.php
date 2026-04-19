@@ -77,8 +77,10 @@
                                     :count="$kpi->cached_value !== null ? (float) $kpi->cached_value : 0"
                                     :icon="$kpi->icon"
                                     :variant="$kpi->variant"
-                                    :description="$kpi->unit"
-                                    :href="route('datawarehouse.kpi.edit', $kpi)"
+                                    :description="collect([$kpi->displayRangeLabel(), $kpi->unit])->filter()->implode(' · ')"
+                                    :trend="$kpi->trendDirection()"
+                                    :trendValue="$kpi->trendValue()"
+                                    :href="route('datawarehouse.kpi.detail', $kpi)"
                                     clickable
                                 />
 
