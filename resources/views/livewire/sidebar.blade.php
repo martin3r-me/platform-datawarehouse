@@ -17,9 +17,25 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
-    @if($streams->isNotEmpty())
+    @if($systemStreams->isNotEmpty())
+        <x-ui-sidebar-list label="Stammdaten">
+            @foreach($systemStreams as $stream)
+                @php
+                    $streamHref = $stream->status === 'onboarding'
+                        ? route('datawarehouse.stream.onboarding', $stream)
+                        : route('datawarehouse.stream.detail', $stream);
+                @endphp
+                <x-ui-sidebar-item :href="$streamHref">
+                    @svg('heroicon-o-book-open', 'w-4 h-4 text-[var(--ui-secondary)]')
+                    <span class="ml-2 text-sm truncate">{{ $stream->name }}</span>
+                </x-ui-sidebar-item>
+            @endforeach
+        </x-ui-sidebar-list>
+    @endif
+
+    @if($userStreams->isNotEmpty())
         <x-ui-sidebar-list label="Streams">
-            @foreach($streams as $stream)
+            @foreach($userStreams as $stream)
                 @php
                     $streamHref = $stream->status === 'onboarding'
                         ? route('datawarehouse.stream.onboarding', $stream)

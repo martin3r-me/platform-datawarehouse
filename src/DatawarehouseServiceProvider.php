@@ -12,10 +12,14 @@ use Platform\Core\PlatformCore;
 use Platform\Core\Routing\ModuleRouter;
 use Platform\Datawarehouse\Console\Commands\DispatchPullStreamsCommand;
 use Platform\Datawarehouse\Console\Commands\SeedDimDateCommand;
-use Platform\Datawarehouse\Providers\FeiertagNrw\FeiertagNrwProvider;
+use Platform\Datawarehouse\Providers\Bundesland\BundeslandProvider;
+use Platform\Datawarehouse\Providers\Feiertage\FeiertageProvider;
+use Platform\Datawarehouse\Providers\Land\LandProvider;
 use Platform\Datawarehouse\Providers\Lexoffice\LexofficeProvider;
 use Platform\Datawarehouse\Providers\ProviderRegistry;
 use Platform\Datawarehouse\Providers\SchulferienNrw\SchulferienNrwProvider;
+use Platform\Datawarehouse\Providers\Sprache\SpracheProvider;
+use Platform\Datawarehouse\Providers\Waehrung\WaehrungProvider;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -98,8 +102,12 @@ class DatawarehouseServiceProvider extends ServiceProvider
         /** @var ProviderRegistry $registry */
         $registry = $this->app->make(ProviderRegistry::class);
         $registry->register(new LexofficeProvider());
-        $registry->register(new FeiertagNrwProvider());
+        $registry->register(new FeiertageProvider());
+        $registry->register(new LandProvider());
         $registry->register(new SchulferienNrwProvider());
+        $registry->register(new BundeslandProvider());
+        $registry->register(new WaehrungProvider());
+        $registry->register(new SpracheProvider());
     }
 
     protected function ensureDimDateSeeded(): void

@@ -13,17 +13,28 @@ class Sidebar extends Component
 
         if (!$user) {
             return view('datawarehouse::livewire.sidebar', [
-                'streams' => collect(),
+                'systemStreams' => collect(),
+                'userStreams'   => collect(),
             ]);
         }
 
-        $streams = DatawarehouseStream::where('team_id', $user->currentTeam->id)
+        $teamId = $user->currentTeam->id;
+
+        $systemStreams = DatawarehouseStream::where('team_id', $teamId)
+            ->system()
+            ->whereIn('status', ['active', 'onboarding'])
+            ->orderBy('name')
+            ->get();
+
+        $userStreams = DatawarehouseStream::where('team_id', $teamId)
+            ->userCreated()
             ->whereIn('status', ['active', 'onboarding'])
             ->orderBy('name')
             ->get();
 
         return view('datawarehouse::livewire.sidebar', [
-            'streams' => $streams,
+            'systemStreams' => $systemStreams,
+            'userStreams'   => $userStreams,
         ]);
     }
 }

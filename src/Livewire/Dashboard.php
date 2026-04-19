@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Services\KpiQueryBuilder;
+use Platform\Datawarehouse\Services\SystemStreamProvisioner;
 
 class Dashboard extends Component
 {
@@ -22,17 +23,26 @@ class Dashboard extends Component
         $user = Auth::user();
         $team = $user->currentTeam;
 
-        $streams = DatawarehouseStream::where('team_id', $team->id)
+        // Lazy-provision system streams if any are missing
+        $systemCount = DatawarehouseStream::forTeam($team->id)->system()->count();
+        if ($systemCount < count(SystemStreamProvisioner::SYSTEM_PROVIDERS)) {
+            app(SystemStreamProvisioner::class)->ensureForTeam($team->id);
+        }
+
+        $allStreams = DatawarehouseStream::where('team_id', $team->id)
             ->withCount('imports')
             ->orderBy('name')
             ->get();
 
+        $systemStreams = $allStreams->where('is_system', true);
+        $userStreams = $allStreams->where('is_system', false);
+
         $stats = [
-            'total'      => $streams->count(),
-            'active'     => $streams->where('status', 'active')->count(),
-            'onboarding' => $streams->where('status', 'onboarding')->count(),
-            'success'    => $streams->where('last_status', 'success')->count(),
-            'error'      => $streams->where('last_status', 'error')->count(),
+            'total'      => $userStreams->count(),
+            'active'     => $userStreams->where('status', 'active')->count(),
+            'onboarding' => $userStreams->where('status', 'onboarding')->count(),
+            'success'    => $userStreams->where('last_status', 'success')->count(),
+            'error'      => $userStreams->where('last_status', 'error')->count(),
         ];
 
         // Load KPIs and refresh stale caches (max 5 per page load)
@@ -55,9 +65,11 @@ class Dashboard extends Component
         }
 
         return view('datawarehouse::livewire.dashboard', [
-            'streams' => $streams,
-            'stats'   => $stats,
-            'kpis'    => $kpis,
+            'systemStreams' => $systemStreams,
+            'userStreams'   => $userStreams,
+            'streams'       => $userStreams,
+            'stats'         => $stats,
+            'kpis'          => $kpis,
         ])->layout('platform::layouts.app');
     }
 }

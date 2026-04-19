@@ -276,7 +276,7 @@
                 </x-ui-panel>
 
                 {{-- Calendar Filters --}}
-                <x-ui-panel title="Kalenderfilter" subtitle="Filtere nach Feiertagen, Wochenenden, KW und mehr">
+                <x-ui-panel title="Kalenderfilter" subtitle="Filtere nach Wochenenden, KW, Monat und mehr">
                     <div class="space-y-4">
                         {{-- Toggle --}}
                         <label class="flex items-center gap-3 cursor-pointer">
@@ -348,13 +348,11 @@
                                         >
                                             <option value="">Eigenschaft...</option>
                                             <option value="is_weekend">Wochenende</option>
-                                            <option value="is_feiertag">Feiertag</option>
                                             <option value="weekday_num">Wochentag (1-7)</option>
                                             <option value="kw">Kalenderwoche</option>
                                             <option value="month">Monat (1-12)</option>
                                             <option value="quarter">Quartal (1-4)</option>
                                             <option value="year">Jahr</option>
-                                            <option value="is_schulferien">Schulferien</option>
                                         </select>
                                         <select
                                             wire:model.live="calendarConditions.{{ $cIndex }}.operator"
@@ -365,7 +363,7 @@
                                             @endforeach
                                         </select>
                                         @php $colType = $cond['column'] ?? ''; @endphp
-                                        @if(in_array($colType, ['is_weekend', 'is_feiertag', 'is_schulferien']))
+                                        @if(in_array($colType, ['is_weekend']))
                                             <select
                                                 wire:model.live="calendarConditions.{{ $cIndex }}.value"
                                                 class="flex-1 min-w-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-2 py-1.5 text-sm"

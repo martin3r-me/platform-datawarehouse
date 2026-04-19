@@ -206,6 +206,10 @@
                                         <option value="every_15_min">Alle 15 Minuten</option>
                                         <option value="hourly">Stündlich</option>
                                         <option value="daily">Täglich</option>
+                                        <option value="weekly">Wöchentlich</option>
+                                        <option value="monthly">Monatlich</option>
+                                        <option value="quarterly">Quartalsweise</option>
+                                        <option value="yearly">Jährlich</option>
                                     </select>
                                 </div>
                                 <div>

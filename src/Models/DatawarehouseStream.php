@@ -44,6 +44,7 @@ class DatawarehouseStream extends Model
         'table_created',
         'schema_version',
         'status',
+        'is_system',
         'last_run_at',
         'last_status',
         'metadata',
@@ -57,6 +58,7 @@ class DatawarehouseStream extends Model
         'table_created'    => 'boolean',
         'change_detection' => 'boolean',
         'soft_delete'      => 'boolean',
+        'is_system'        => 'boolean',
         'last_run_at'      => 'datetime',
         'last_pull_at'     => 'datetime',
     ];
@@ -224,5 +226,20 @@ class DatawarehouseStream extends Model
     public function scopeForTeam($query, int $teamId)
     {
         return $query->where('team_id', $teamId);
+    }
+
+    public function scopeSystem($query)
+    {
+        return $query->where('is_system', true);
+    }
+
+    public function scopeUserCreated($query)
+    {
+        return $query->where('is_system', false);
+    }
+
+    public function isSystem(): bool
+    {
+        return (bool) $this->is_system;
     }
 }

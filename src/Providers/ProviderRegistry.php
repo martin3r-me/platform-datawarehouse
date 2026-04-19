@@ -42,6 +42,7 @@ class ProviderRegistry
 
     /**
      * Quick accessor for UI pickers — returns [key => label, …].
+     * Excludes system providers (auto-provisioned, not user-selectable).
      *
      * @return array<string, string>
      */
@@ -49,6 +50,9 @@ class ProviderRegistry
     {
         $out = [];
         foreach ($this->providers as $key => $provider) {
+            if (\Platform\Datawarehouse\Services\SystemStreamProvisioner::isSystemProvider($key)) {
+                continue;
+            }
             $out[$key] = $provider->label();
         }
         asort($out);

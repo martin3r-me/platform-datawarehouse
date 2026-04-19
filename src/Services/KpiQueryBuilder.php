@@ -19,7 +19,6 @@ class KpiQueryBuilder
     private const CALENDAR_TABLE = 'dw_dim_date';
     private const CALENDAR_COLUMNS = [
         'weekday', 'weekday_num', 'is_weekend', 'kw', 'month', 'quarter', 'year',
-        'is_feiertag', 'feiertag_name', 'is_schulferien', 'schulferien_name', 'bundesland',
     ];
 
     /**

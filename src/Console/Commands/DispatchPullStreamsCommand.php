@@ -89,6 +89,10 @@ class DispatchPullStreamsCommand extends Command
             'every_15_min'  => '*/15 * * * *',
             'hourly'        => '0 * * * *',
             'daily'         => '0 0 * * *',
+            'weekly'        => '0 0 * * 1',
+            'monthly'       => '0 0 1 * *',
+            'quarterly'     => '0 0 1 1,4,7,10 *',
+            'yearly'        => '0 0 1 1 *',
             default         => str_contains($schedule, ' ') ? $schedule : null,
         };
     }

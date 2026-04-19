@@ -20,7 +20,7 @@ class PullContext
      * @param  \DateTimeInterface|null    $since             Incremental-since timestamp.
      */
     public function __construct(
-        public readonly DatawarehouseConnection $connection,
+        public readonly ?DatawarehouseConnection $connection,
         public readonly DatawarehouseStream $stream,
         public readonly Endpoint $endpoint,
         public readonly ?array $cursor = null,

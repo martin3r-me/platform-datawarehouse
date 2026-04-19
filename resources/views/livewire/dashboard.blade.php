@@ -96,6 +96,50 @@
                 @endif
             </div>
 
+            {{-- Stammdaten --}}
+            @if($systemStreams->isNotEmpty())
+                <x-ui-panel title="Stammdaten" subtitle="System-Lookup-Tabellen">
+                    <div class="divide-y divide-[var(--ui-border)]">
+                        @foreach($systemStreams as $stream)
+                            @php
+                                $isOnboarding = $stream->status === 'onboarding';
+                                $href = $isOnboarding
+                                    ? route('datawarehouse.stream.onboarding', $stream)
+                                    : route('datawarehouse.stream.detail', $stream);
+                            @endphp
+                            <a href="{{ $href }}" class="p-4 flex items-center justify-between hover:bg-[var(--ui-muted-5)] transition-colors block">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    @svg('heroicon-o-book-open', 'w-4 h-4 text-[var(--ui-secondary)] shrink-0')
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-[var(--ui-secondary)] flex items-center gap-2">
+                                            {{ $stream->name }}
+                                            @if($isOnboarding)
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Onboarding</span>
+                                            @endif
+                                        </div>
+                                        <div class="text-xs text-[var(--ui-muted)] flex items-center gap-1 flex-wrap">
+                                            <span class="px-1.5 py-0.5 rounded bg-[var(--ui-muted-5)]">{{ $stream->source_type }}</span>
+                                            @if($stream->last_run_at)
+                                                <span>&middot;</span>
+                                                <span>{{ $stream->last_run_at->diffForHumans() }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 shrink-0">
+                                    @if($isOnboarding)
+                                        <span class="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800">Onboarding</span>
+                                    @else
+                                        <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">Aktiv</span>
+                                    @endif
+                                    <span class="text-xs text-[var(--ui-muted)]">{{ $stream->imports_count }} Imports</span>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </x-ui-panel>
+            @endif
+
             {{-- Stream-Liste --}}
             <x-ui-panel title="Datenströme" subtitle="Alle konfigurierten Datenströme">
                 @if($streams->isEmpty())
