@@ -36,4 +36,8 @@ return [
             ],
         ],
     ],
+
+    'kpi' => [
+        'snapshot_retention' => env('DW_KPI_SNAPSHOT_RETENTION', 365),
+    ],
 ];

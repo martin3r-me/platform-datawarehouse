@@ -71,15 +71,60 @@
                 @if($kpis->isNotEmpty())
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         @foreach($kpis as $kpi)
-                            <x-ui-dashboard-tile
-                                :title="$kpi->name"
-                                :count="$kpi->cached_value !== null ? (float) $kpi->cached_value : 0"
-                                :icon="$kpi->icon"
-                                :variant="$kpi->variant"
-                                :description="$kpi->unit"
-                                :href="route('datawarehouse.kpi.edit', $kpi)"
-                                clickable
-                            />
+                            <div class="relative group {{ $kpi->status === 'error' ? 'ring-2 ring-red-300 rounded-xl' : '' }}">
+                                <x-ui-dashboard-tile
+                                    :title="$kpi->name"
+                                    :count="$kpi->cached_value !== null ? (float) $kpi->cached_value : 0"
+                                    :icon="$kpi->icon"
+                                    :variant="$kpi->variant"
+                                    :description="$kpi->unit"
+                                    :href="route('datawarehouse.kpi.edit', $kpi)"
+                                    clickable
+                                />
+
+                                {{-- Status Badge --}}
+                                @if($kpi->status === 'draft')
+                                    <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                        Entwurf
+                                    </span>
+                                @elseif($kpi->status === 'error')
+                                    <span class="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700" title="{{ $kpi->last_error }}">
+                                        Fehler
+                                    </span>
+                                @endif
+
+                                {{-- Hover Actions --}}
+                                <div class="absolute bottom-2 right-2 hidden group-hover:flex items-center gap-1">
+                                    <button
+                                        wire:click="moveKpiUp({{ $kpi->id }})"
+                                        class="p-1 rounded bg-white/90 border border-[var(--ui-border)] text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors shadow-sm"
+                                        title="Nach oben"
+                                    >
+                                        @svg('heroicon-o-arrow-up', 'w-3.5 h-3.5')
+                                    </button>
+                                    <button
+                                        wire:click="moveKpiDown({{ $kpi->id }})"
+                                        class="p-1 rounded bg-white/90 border border-[var(--ui-border)] text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors shadow-sm"
+                                        title="Nach unten"
+                                    >
+                                        @svg('heroicon-o-arrow-down', 'w-3.5 h-3.5')
+                                    </button>
+                                    <button
+                                        wire:click="duplicateKpi({{ $kpi->id }})"
+                                        class="p-1 rounded bg-white/90 border border-[var(--ui-border)] text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors shadow-sm"
+                                        title="Duplizieren"
+                                    >
+                                        @svg('heroicon-o-document-duplicate', 'w-3.5 h-3.5')
+                                    </button>
+                                    <button
+                                        wire:click="confirmDeleteKpi({{ $kpi->id }})"
+                                        class="p-1 rounded bg-white/90 border border-red-200 text-red-400 hover:text-red-600 transition-colors shadow-sm"
+                                        title="Löschen"
+                                    >
+                                        @svg('heroicon-o-trash', 'w-3.5 h-3.5')
+                                    </button>
+                                </div>
+                            </div>
                         @endforeach
                     </div>
                 @else
@@ -95,6 +140,31 @@
                     </div>
                 @endif
             </div>
+
+            {{-- Delete Confirmation Modal --}}
+            @if($confirmDeleteKpiId)
+                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" wire:click.self="cancelDeleteKpi">
+                    <div class="bg-[var(--ui-bg)] rounded-xl border border-[var(--ui-border)] shadow-xl p-6 max-w-sm w-full mx-4">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                @svg('heroicon-o-exclamation-triangle', 'w-5 h-5 text-red-600')
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-[var(--ui-secondary)]">Kennzahl löschen?</h3>
+                                <p class="text-sm text-[var(--ui-muted)]">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3">
+                            <button wire:click="cancelDeleteKpi" class="px-4 py-2 rounded-lg border border-[var(--ui-border)] text-[var(--ui-secondary)] text-sm font-medium hover:bg-[var(--ui-muted-5)] transition-colors">
+                                Abbrechen
+                            </button>
+                            <button wire:click="deleteKpi" class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
+                                Löschen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             {{-- Stammdaten --}}
             @if($systemStreams->isNotEmpty())

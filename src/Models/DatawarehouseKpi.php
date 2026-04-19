@@ -5,6 +5,7 @@ namespace Platform\Datawarehouse\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class DatawarehouseKpi extends Model
@@ -27,18 +28,16 @@ class DatawarehouseKpi extends Model
         'definition',
         'cached_value',
         'cached_at',
-        'cache_ttl_seconds',
         'status',
         'last_error',
     ];
 
     protected $casts = [
-        'definition'        => 'array',
-        'cached_value'      => 'decimal:4',
-        'cached_at'         => 'datetime',
-        'cache_ttl_seconds' => 'integer',
-        'decimals'          => 'integer',
-        'position'          => 'integer',
+        'definition'   => 'array',
+        'cached_value' => 'decimal:4',
+        'cached_at'    => 'datetime',
+        'decimals'     => 'integer',
+        'position'     => 'integer',
     ];
 
     protected static function booted(): void
@@ -62,6 +61,11 @@ class DatawarehouseKpi extends Model
         return $this->belongsTo(\Platform\Core\Models\User::class);
     }
 
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(DatawarehouseKpiSnapshot::class, 'kpi_id');
+    }
+
     // --- Scopes ---
 
     public function scopeForTeam($query, int $teamId)
@@ -82,6 +86,21 @@ class DatawarehouseKpi extends Model
             return false;
         }
 
-        return $this->cached_at->addSeconds($this->cache_ttl_seconds)->isFuture();
+        $streams = $this->definition['streams'] ?? [];
+        if (empty($streams)) {
+            return false;
+        }
+
+        $streamIds = collect($streams)->pluck('stream_id')->toArray();
+
+        $lastImport = DatawarehouseStream::whereIn('id', $streamIds)
+            ->where('team_id', $this->team_id)
+            ->max('last_run_at');
+
+        if (!$lastImport) {
+            return true;
+        }
+
+        return $this->cached_at->greaterThan($lastImport);
     }
 }

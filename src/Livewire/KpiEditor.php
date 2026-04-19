@@ -39,6 +39,7 @@ class KpiEditor extends Component
     public bool $calendarEnabled = false;
     public string $calDateColumn = '';
     public string $calDateStreamAlias = 's0';
+    public ?string $calDateRange = null;
     public array $calendarConditions = []; // [{column, operator, value}]
 
     // Preview
@@ -74,6 +75,7 @@ class KpiEditor extends Component
                 $this->calendarEnabled = true;
                 $this->calDateColumn = $cal['date_column'] ?? '';
                 $this->calDateStreamAlias = $cal['date_stream_alias'] ?? 's0';
+                $this->calDateRange = $cal['date_range'] ?? null;
                 $this->calendarConditions = $cal['conditions'] ?? [];
             }
         }
@@ -242,6 +244,7 @@ class KpiEditor extends Component
         if (!$this->calendarEnabled) {
             $this->calDateColumn = '';
             $this->calDateStreamAlias = 's0';
+            $this->calDateRange = null;
             $this->calendarConditions = [];
         }
     }
@@ -327,7 +330,7 @@ class KpiEditor extends Component
         ];
 
         if ($this->calendarEnabled && $this->calDateColumn) {
-            $definition['calendar_filters'] = [
+            $calFilters = [
                 'date_column'        => $this->calDateColumn,
                 'date_stream_alias'  => $this->calDateStreamAlias,
                 'conditions'         => array_values(array_filter(
@@ -335,6 +338,12 @@ class KpiEditor extends Component
                     fn($c) => !empty($c['column']) && $c['value'] !== '',
                 )),
             ];
+
+            if ($this->calDateRange) {
+                $calFilters['date_range'] = $this->calDateRange;
+            }
+
+            $definition['calendar_filters'] = $calFilters;
         }
 
         $data = [
@@ -468,7 +477,7 @@ class KpiEditor extends Component
         ];
 
         if ($this->calendarEnabled && $this->calDateColumn) {
-            $definition['calendar_filters'] = [
+            $calFilters = [
                 'date_column'        => $this->calDateColumn,
                 'date_stream_alias'  => $this->calDateStreamAlias,
                 'conditions'         => array_values(array_filter(
@@ -476,6 +485,12 @@ class KpiEditor extends Component
                     fn($c) => !empty($c['column']) && $c['value'] !== '',
                 )),
             ];
+
+            if ($this->calDateRange) {
+                $calFilters['date_range'] = $this->calDateRange;
+            }
+
+            $definition['calendar_filters'] = $calFilters;
         }
 
         $kpi = new DatawarehouseKpi();

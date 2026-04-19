@@ -295,6 +295,21 @@
                         </label>
 
                         @if($calendarEnabled)
+                            {{-- Date Range Dropdown --}}
+                            <div>
+                                <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Zeitraum</label>
+                                <select
+                                    wire:model.live="calDateRange"
+                                    class="w-full rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)] text-[var(--ui-secondary)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/50"
+                                >
+                                    <option value="">— Kein dynamischer Zeitraum —</option>
+                                    @foreach(\Platform\Datawarehouse\Services\KpiQueryBuilder::dateRangeOptions() as $key => $label)
+                                        <option value="{{ $key }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-xs text-[var(--ui-muted)] mt-1">Optional: Automatisch berechneter Zeitraum, der bei jeder Abfrage aktualisiert wird.</p>
+                            </div>
+
                             {{-- Date Column Picker --}}
                             <div>
                                 <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">Datumsspalte</label>

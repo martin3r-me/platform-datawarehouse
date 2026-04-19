@@ -2,8 +2,10 @@
 
 namespace Platform\Datawarehouse\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
+use Platform\Datawarehouse\Models\DatawarehouseKpiSnapshot;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
 use Platform\Datawarehouse\Models\DatawarehouseStreamRelation;
@@ -20,6 +22,28 @@ class KpiQueryBuilder
     private const CALENDAR_COLUMNS = [
         'weekday', 'weekday_num', 'is_weekend', 'kw', 'month', 'quarter', 'year',
     ];
+
+    public const DATE_RANGE_MAP = [
+        'current_year'     => 'Aktuelles Jahr',
+        'current_quarter'  => 'Aktuelles Quartal',
+        'current_month'    => 'Aktueller Monat',
+        'current_week'     => 'Aktuelle Woche',
+        'last_30_days'     => 'Letzte 30 Tage',
+        'last_90_days'     => 'Letzte 90 Tage',
+        'last_12_months'   => 'Letzte 12 Monate',
+        'previous_month'   => 'Vormonat',
+        'previous_quarter' => 'Vorquartal',
+        'previous_year'    => 'Vorjahr',
+        'year_to_date'     => 'Jahr bis heute',
+    ];
+
+    /**
+     * Return options for UI dropdowns.
+     */
+    public static function dateRangeOptions(): array
+    {
+        return self::DATE_RANGE_MAP;
+    }
 
     /**
      * Execute a KPI query and return the result.
@@ -137,7 +161,7 @@ class KpiQueryBuilder
     /**
      * Execute and update the cache on the KPI model.
      */
-    public function executeAndCache(DatawarehouseKpi $kpi): ?float
+    public function executeAndCache(DatawarehouseKpi $kpi, string $trigger = 'pull_refresh'): ?float
     {
         try {
             $value = $this->execute($kpi);
@@ -148,6 +172,15 @@ class KpiQueryBuilder
                 'status'       => 'active',
                 'last_error'   => null,
             ]);
+
+            DatawarehouseKpiSnapshot::create([
+                'kpi_id'        => $kpi->id,
+                'value'         => $value,
+                'calculated_at' => now(),
+                'trigger'       => $trigger,
+            ]);
+
+            DatawarehouseKpiSnapshot::prune($kpi->id);
 
             return $value;
         } catch (\Throwable $e) {
@@ -170,6 +203,47 @@ class KpiQueryBuilder
         }
 
         return $this->executeAndCache($kpi);
+    }
+
+    /**
+     * Resolve a date range key to [start, end] Carbon instances.
+     */
+    public static function resolveDateRange(string $range): ?array
+    {
+        $now = Carbon::now();
+
+        return match ($range) {
+            'current_year'     => [$now->copy()->startOfYear(), $now->copy()->endOfYear()],
+            'current_quarter'  => [$now->copy()->startOfQuarter(), $now->copy()->endOfQuarter()],
+            'current_month'    => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
+            'current_week'     => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
+            'last_30_days'     => [$now->copy()->subDays(29)->startOfDay(), $now->copy()->endOfDay()],
+            'last_90_days'     => [$now->copy()->subDays(89)->startOfDay(), $now->copy()->endOfDay()],
+            'last_12_months'   => [$now->copy()->subMonths(12)->startOfMonth(), $now->copy()->endOfMonth()],
+            'previous_month'   => [$now->copy()->subMonth()->startOfMonth(), $now->copy()->subMonth()->endOfMonth()],
+            'previous_quarter' => [$now->copy()->subQuarter()->startOfQuarter(), $now->copy()->subQuarter()->endOfQuarter()],
+            'previous_year'    => [$now->copy()->subYear()->startOfYear(), $now->copy()->subYear()->endOfYear()],
+            'year_to_date'     => [$now->copy()->startOfYear(), $now->copy()->endOfDay()],
+            default            => null,
+        };
+    }
+
+    /**
+     * Apply a date range filter on a date column.
+     */
+    private function applyDateRangeFilter($query, string $alias, string $column, string $range): void
+    {
+        $dates = self::resolveDateRange($range);
+        if (!$dates) {
+            return;
+        }
+
+        [$start, $end] = $dates;
+
+        $query->whereBetween(
+            DB::raw("DATE({$alias}.{$column})"),
+            [$start->toDateString(), $end->toDateString()]
+        );
     }
 
     /**
@@ -219,9 +293,21 @@ class KpiQueryBuilder
     {
         $dateColumn = $calendarFilters['date_column'] ?? null;
         $dateAlias = $calendarFilters['date_stream_alias'] ?? 's0';
+        $dateRange = $calendarFilters['date_range'] ?? null;
         $conditions = $calendarFilters['conditions'] ?? [];
 
-        if (!$dateColumn || empty($conditions)) {
+        if (!$dateColumn) {
+            return;
+        }
+
+        // Apply dynamic date range filter directly (no calendar JOIN needed)
+        if ($dateRange) {
+            $this->validateColumnName($dateColumn);
+            $this->validateAlias($dateAlias);
+            $this->applyDateRangeFilter($query, $dateAlias, $dateColumn, $dateRange);
+        }
+
+        if (empty($conditions)) {
             return;
         }
 

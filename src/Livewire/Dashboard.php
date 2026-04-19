@@ -12,10 +12,106 @@ use Platform\Datawarehouse\Services\SystemStreamProvisioner;
 
 class Dashboard extends Component
 {
+    public ?int $confirmDeleteKpiId = null;
+
     #[On('datawarehouse:stream-created')]
     public function refreshStreams(): void
     {
         // Re-renders automatically
+    }
+
+    public function confirmDeleteKpi(int $id): void
+    {
+        $this->confirmDeleteKpiId = $id;
+    }
+
+    public function cancelDeleteKpi(): void
+    {
+        $this->confirmDeleteKpiId = null;
+    }
+
+    public function deleteKpi(): void
+    {
+        if (!$this->confirmDeleteKpiId) {
+            return;
+        }
+
+        $team = Auth::user()->currentTeam;
+        $kpi = DatawarehouseKpi::forTeam($team->id)->find($this->confirmDeleteKpiId);
+
+        if ($kpi) {
+            $kpi->delete();
+        }
+
+        $this->confirmDeleteKpiId = null;
+    }
+
+    public function duplicateKpi(int $id): void
+    {
+        $team = Auth::user()->currentTeam;
+        $kpi = DatawarehouseKpi::forTeam($team->id)->find($id);
+
+        if (!$kpi) {
+            return;
+        }
+
+        $maxPosition = DatawarehouseKpi::forTeam($team->id)->max('position') ?? 0;
+
+        DatawarehouseKpi::create([
+            'team_id'    => $kpi->team_id,
+            'user_id'    => Auth::id(),
+            'name'       => $kpi->name . ' (Kopie)',
+            'icon'       => $kpi->icon,
+            'variant'    => $kpi->variant,
+            'unit'       => $kpi->unit,
+            'format'     => $kpi->format,
+            'decimals'   => $kpi->decimals,
+            'position'   => $maxPosition + 1,
+            'definition' => $kpi->definition,
+            'status'     => 'draft',
+        ]);
+    }
+
+    public function moveKpiUp(int $id): void
+    {
+        $team = Auth::user()->currentTeam;
+        $kpis = DatawarehouseKpi::forTeam($team->id)
+            ->whereIn('status', ['active', 'draft', 'error'])
+            ->orderBy('position')
+            ->get();
+
+        $index = $kpis->search(fn ($k) => $k->id === $id);
+        if ($index === false || $index === 0) {
+            return;
+        }
+
+        $current = $kpis[$index];
+        $prev = $kpis[$index - 1];
+
+        $tempPos = $current->position;
+        $current->update(['position' => $prev->position]);
+        $prev->update(['position' => $tempPos]);
+    }
+
+    public function moveKpiDown(int $id): void
+    {
+        $team = Auth::user()->currentTeam;
+        $kpis = DatawarehouseKpi::forTeam($team->id)
+            ->whereIn('status', ['active', 'draft', 'error'])
+            ->orderBy('position')
+            ->get();
+
+        $index = $kpis->search(fn ($k) => $k->id === $id);
+        if ($index === false || $index === $kpis->count() - 1) {
+            return;
+        }
+
+        $current = $kpis[$index];
+        $next = $kpis[$index + 1];
+
+        $tempPos = $current->position;
+        $current->update(['position' => $next->position]);
+        $next->update(['position' => $tempPos]);
     }
 
     public function render()
@@ -45,16 +141,16 @@ class Dashboard extends Component
             'error'      => $userStreams->where('last_status', 'error')->count(),
         ];
 
-        // Load KPIs and refresh stale caches (max 5 per page load)
+        // Load KPIs (active, draft, error) and refresh stale caches (max 5 per page load)
         $kpis = DatawarehouseKpi::forTeam($team->id)
-            ->active()
+            ->whereIn('status', ['active', 'draft', 'error'])
             ->orderBy('position')
             ->get();
 
         $builder = new KpiQueryBuilder();
         $refreshed = 0;
         foreach ($kpis as $kpi) {
-            if (!$kpi->isCacheValid() && $refreshed < 5) {
+            if ($kpi->status !== 'draft' && !$kpi->isCacheValid() && $refreshed < 5) {
                 try {
                     $builder->executeAndCache($kpi);
                     $refreshed++;
