@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('stream_id')->constrained('datawarehouse_streams')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->integer('version');
-            $table->enum('operation', ['create_table', 'add_column', 'modify_column', 'drop_column']);
+            $table->enum('operation', ['create_table', 'add_column', 'modify_column', 'drop_column', 'drop_table']);
             $table->string('column_name')->nullable();
             $table->json('old_definition')->nullable();
             $table->json('new_definition')->nullable();
