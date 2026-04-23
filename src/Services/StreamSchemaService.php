@@ -13,6 +13,27 @@ use Platform\Datawarehouse\Models\DatawarehouseSchemaMigration;
 class StreamSchemaService
 {
     /**
+     * Build an index name that fits within MySQL's 64-char identifier limit.
+     *
+     * When the conventional "{table}_{column}_index" name would exceed 64
+     * characters, a compact name using an 8-char MD5 prefix is used instead.
+     */
+    public static function safeIndexName(string $table, string $column, string $type = 'index'): string
+    {
+        // Laravel convention: replaces hyphens with underscores in index names
+        $conventional = str_replace(['-', '.'], '_', $table) . '_' . $column . '_' . $type;
+
+        if (strlen($conventional) <= 64) {
+            return $conventional;
+        }
+
+        // Compact form: "dw_<8-char-hash>_<column>_<type>" — deterministic & unique
+        $hash = substr(md5($table), 0, 8);
+
+        return 'dw_' . $hash . '_' . $column . '_' . $type;
+    }
+
+    /**
      * Column names that collide with system columns added by createTable().
      * User-defined columns with these names are auto-renamed via
      * sanitizeColumnName() during onboarding.
@@ -125,30 +146,38 @@ class StreamSchemaService
         $sql = null;
 
         try {
-            Schema::create($tableName, function (Blueprint $table) use ($columns, $strategy) {
+            Schema::create($tableName, function (Blueprint $table) use ($tableName, $columns, $strategy) {
                 $table->id();
 
                 // Legacy bookkeeping (kept so existing dashboards keep working).
-                $table->unsignedBigInteger('import_id')->nullable()->index();
+                $table->unsignedBigInteger('import_id')->nullable();
+                $table->index('import_id', self::safeIndexName($tableName, 'import_id'));
                 $table->timestamp('imported_at')->nullable();
 
                 // Uniform system columns (all strategies).
-                $table->string('_external_id')->nullable()->index();
-                $table->timestamp('_synced_at')->nullable()->index();
-                $table->unsignedBigInteger('_source_run_id')->nullable()->index();
+                $table->string('_external_id')->nullable();
+                $table->index('_external_id', self::safeIndexName($tableName, '_external_id'));
+                $table->timestamp('_synced_at')->nullable();
+                $table->index('_synced_at', self::safeIndexName($tableName, '_synced_at'));
+                $table->unsignedBigInteger('_source_run_id')->nullable();
+                $table->index('_source_run_id', self::safeIndexName($tableName, '_source_run_id'));
                 $table->char('_row_hash', 64)->nullable();
 
                 // Strategy-specific system columns.
                 if ($strategy === 'snapshot') {
-                    $table->timestamp('_snapshot_at')->nullable()->index();
+                    $table->timestamp('_snapshot_at')->nullable();
+                    $table->index('_snapshot_at', self::safeIndexName($tableName, '_snapshot_at'));
                 }
                 if ($strategy === 'scd2') {
-                    $table->timestamp('_valid_from')->nullable()->index();
+                    $table->timestamp('_valid_from')->nullable();
+                    $table->index('_valid_from', self::safeIndexName($tableName, '_valid_from'));
                     $table->timestamp('_valid_to')->nullable();
-                    $table->boolean('_is_current')->default(true)->index();
+                    $table->boolean('_is_current')->default(true);
+                    $table->index('_is_current', self::safeIndexName($tableName, '_is_current'));
                 }
                 if (in_array($strategy, ['current', 'scd2'], true)) {
-                    $table->timestamp('_deleted_at')->nullable()->index();
+                    $table->timestamp('_deleted_at')->nullable();
+                    $table->index('_deleted_at', self::safeIndexName($tableName, '_deleted_at'));
                 }
 
                 foreach ($columns as $col) {
@@ -164,7 +193,7 @@ class StreamSchemaService
                     }
 
                     if ($col->is_indexed) {
-                        $table->index($col->column_name);
+                        $table->index($col->column_name, self::safeIndexName($tableName, $col->column_name));
                     }
                 }
 
@@ -204,7 +233,7 @@ class StreamSchemaService
         $sql = null;
 
         try {
-            Schema::table($tableName, function (Blueprint $table) use ($column, $colDef) {
+            Schema::table($tableName, function (Blueprint $table) use ($tableName, $column, $colDef) {
                 $col = $table->{$colDef['type']}($column->column_name, ...$colDef['args']);
 
                 if ($column->is_nullable) {
@@ -216,7 +245,7 @@ class StreamSchemaService
                 }
 
                 if ($column->is_indexed) {
-                    $table->index($column->column_name);
+                    $table->index($column->column_name, self::safeIndexName($tableName, $column->column_name));
                 }
             });
 
