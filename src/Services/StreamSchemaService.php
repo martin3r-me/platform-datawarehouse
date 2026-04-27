@@ -146,6 +146,10 @@ class StreamSchemaService
         $sql = null;
 
         try {
+            // Drop pre-existing table so re-activation after a failed first
+            // attempt doesn't crash with "table already exists".
+            Schema::dropIfExists($tableName);
+
             Schema::create($tableName, function (Blueprint $table) use ($tableName, $columns, $strategy) {
                 $table->id();
 
