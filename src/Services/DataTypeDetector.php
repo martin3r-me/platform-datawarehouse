@@ -45,9 +45,14 @@ class DataTypeDetector
             return 'integer';
         }
 
-        // Decimal
+        // Decimal (standard: 1234.56)
         if (is_numeric($str) && str_contains($str, '.')) {
             return 'decimal';
+        }
+
+        // German decimal (1.234,56 or 1234,56) — comma as decimal separator
+        if (preg_match('/^-?\d{1,3}(?:\.\d{3})*,\d+$/', $str)) {
+            return 'german_decimal';
         }
 
         // DateTime (ISO 8601 or common patterns)
@@ -167,8 +172,8 @@ class DataTypeDetector
         }
 
         // Numeric widening.
-        if (count(array_diff($types, ['integer', 'decimal'])) === 0) {
-            return 'decimal';
+        if (count(array_diff($types, ['integer', 'decimal', 'german_decimal'])) === 0) {
+            return in_array('german_decimal', $types, true) ? 'german_decimal' : 'decimal';
         }
 
         // Temporal widening.

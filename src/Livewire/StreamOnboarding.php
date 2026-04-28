@@ -92,13 +92,20 @@ class StreamOnboarding extends Component
         $this->fields = [];
         $position = 0;
         foreach ($detectedTypes as $key => $type) {
+            // Auto-detect German decimal format → set type + transform automatically
+            $transform = '';
+            if ($type === 'german_decimal') {
+                $type = 'decimal';
+                $transform = 'cast_german_decimal';
+            }
+
             $this->fields[] = [
                 'source_key'  => $key,
                 'label'       => $this->humanizeKey($key),
                 'data_type'   => $type,
                 'is_nullable' => true,
                 'is_indexed'  => false,
-                'transform'   => '',
+                'transform'   => $transform,
                 'selected'    => true,
                 'position'    => $position++,
             ];

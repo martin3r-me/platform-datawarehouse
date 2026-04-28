@@ -60,7 +60,21 @@ class DatawarehouseStreamColumn extends Model
      */
     public function applyTransform(mixed $value): mixed
     {
-        if (!$this->transform || $value === null) {
+        if ($value === null) {
+            return $value;
+        }
+
+        // Safety net: auto-fix German decimal values for decimal columns,
+        // even when no explicit transform is configured.
+        if (!$this->transform && $this->data_type === 'decimal') {
+            if (is_string($value) && preg_match('/^-?\d{1,3}(?:\.\d{3})*,\d+$/', trim($value))) {
+                return $this->castGermanDecimal($value);
+            }
+
+            return $value;
+        }
+
+        if (!$this->transform) {
             return $value;
         }
 
