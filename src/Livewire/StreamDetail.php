@@ -51,6 +51,10 @@ class StreamDetail extends Component
     public ?string $deleteError = null;
     public string $deleteConfirmName = '';
 
+    // Reset (Re-Onboarding) State
+    public bool $showResetModal = false;
+    public ?string $resetError = null;
+
     // Relation State
     public bool $showRelationModal = false;
     public string $relSourceColumn = '';
@@ -194,6 +198,66 @@ class StreamDetail extends Component
         $this->stream->delete();
 
         $this->redirect(route('datawarehouse.dashboard'));
+    }
+
+    // --- Re-Onboarding (Hard Reset) ---
+
+    public function openResetModal(): void
+    {
+        $this->resetError = null;
+        $this->showResetModal = true;
+    }
+
+    public function cancelReset(): void
+    {
+        $this->showResetModal = false;
+        $this->resetError = null;
+    }
+
+    /**
+     * Check if the stream can be reset (same blockers as delete).
+     */
+    public function getResetBlockersProperty(): array
+    {
+        return $this->deleteBlockers;
+    }
+
+    public function resetToOnboarding(StreamSchemaService $schema): void
+    {
+        $this->resetError = null;
+
+        // Re-check blockers
+        $blockers = $this->resetBlockers;
+        if (!empty($blockers)) {
+            $this->resetError = 'Reset nicht möglich: ' . implode(', ', $blockers);
+            return;
+        }
+
+        // Drop the dynamic table
+        if ($this->stream->table_created) {
+            $schema->dropTable($this->stream, Auth::id());
+        }
+
+        // Delete related records
+        $this->stream->columns()->delete();
+        $this->stream->imports()->delete();
+        $this->stream->schemaMigrations()->delete();
+
+        // Reset stream to onboarding state
+        $this->stream->update([
+            'status'           => 'onboarding',
+            'table_name'       => null,
+            'table_created'    => false,
+            'sync_strategy'    => null,
+            'natural_key'      => null,
+            'change_detection' => true,
+            'soft_delete'      => false,
+            'schema_version'   => 0,
+            'last_cursor'      => null,
+            'last_pull_at'     => null,
+        ]);
+
+        $this->redirect(route('datawarehouse.stream.onboarding', $this->stream));
     }
 
     public function triggerPull(): void

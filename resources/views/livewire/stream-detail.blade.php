@@ -51,6 +51,14 @@
                         </button>
                     @endif
                     <button
+                        wire:click="openResetModal"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-300 bg-white text-amber-700 text-[13px] font-medium hover:bg-amber-50 transition-colors"
+                        title="Stream zurücksetzen und neu konfigurieren"
+                    >
+                        @svg('heroicon-o-arrow-path', 'w-4 h-4')
+                        Re-Onboarding
+                    </button>
+                    <button
                         wire:click="openDeleteModal"
                         class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Datenstrom löschen"
@@ -898,6 +906,65 @@
                         @svg('heroicon-o-check', 'w-4 h-4')
                         Ändern
                     </button>
+                </div>
+            </x-slot>
+        </x-ui-modal>
+
+        {{-- Re-Onboarding Modal --}}
+        <x-ui-modal wire:model="showResetModal" title="Re-Onboarding" maxWidth="lg">
+            <div class="space-y-4">
+                @php $resetBlockers = $this->resetBlockers; @endphp
+
+                @if(!empty($resetBlockers))
+                    <div class="p-4 rounded-md bg-red-50 border border-red-200">
+                        <div class="flex items-start gap-3">
+                            @svg('heroicon-o-exclamation-triangle', 'w-5 h-5 text-red-500 shrink-0 mt-0.5')
+                            <div>
+                                <p class="text-[13px] font-medium text-red-800 mb-2">Dieser Datenstrom kann nicht zurückgesetzt werden:</p>
+                                <ul class="text-[13px] text-red-700 space-y-1">
+                                    @foreach($resetBlockers as $blocker)
+                                        <li class="flex items-center gap-1.5">
+                                            @svg('heroicon-o-x-circle', 'w-4 h-4 shrink-0')
+                                            {{ $blocker }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                <p class="text-[11px] text-red-600 mt-3">Entferne zuerst alle Relationen und Kennzahlen, die auf diesen Datenstrom verweisen.</p>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="p-4 rounded-md bg-amber-50 border border-amber-200">
+                        <div class="flex items-start gap-3">
+                            @svg('heroicon-o-exclamation-triangle', 'w-5 h-5 text-amber-500 shrink-0 mt-0.5')
+                            <div>
+                                <p class="text-[13px] font-medium text-amber-800">Achtung: Alle Daten und Spalten-Konfigurationen werden gelöscht!</p>
+                                <p class="text-[13px] text-amber-700 mt-1">Der Datenstrom <strong>{{ $stream->name }}</strong> wird in den Onboarding-Modus zurückgesetzt. Die Tabelle wird gelöscht und Spalten, Typen sowie Strategie können neu konfiguriert werden.</p>
+                                <p class="text-[11px] text-amber-600 mt-2">Name, Quelle, Endpoint-Token und Verbindung bleiben erhalten.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($resetError)
+                        <p class="text-[13px] text-red-600">{{ $resetError }}</p>
+                    @endif
+                @endif
+            </div>
+
+            <x-slot name="footer">
+                <div class="flex justify-end gap-2">
+                    <button wire:click="cancelReset" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">
+                        Abbrechen
+                    </button>
+                    @if(empty($resetBlockers))
+                        <button
+                            wire:click="resetToOnboarding"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-600 text-white text-[13px] font-medium hover:bg-amber-700 transition-colors"
+                        >
+                            @svg('heroicon-o-arrow-path', 'w-4 h-4')
+                            Zurücksetzen & neu konfigurieren
+                        </button>
+                    @endif
                 </div>
             </x-slot>
         </x-ui-modal>
