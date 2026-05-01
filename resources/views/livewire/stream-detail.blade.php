@@ -1,3 +1,32 @@
+@php
+    $sourceLabels = [
+        'webhook_post' => 'Webhook (POST)',
+        'pull_get'     => 'Pull (HTTP GET)',
+        'manual'       => 'Manuell (CSV/Excel)',
+    ];
+    $strategyLabels = [
+        'append'   => 'Append-Only',
+        'current'  => 'Current (Upsert)',
+        'snapshot' => 'Snapshot',
+        'scd2'     => 'SCD Type 2',
+    ];
+    $scheduleLabels = [
+        'every_minute' => 'Jede Minute',
+        'every_5_min'  => 'Alle 5 Minuten',
+        'every_15_min' => 'Alle 15 Minuten',
+        'hourly'       => 'Stündlich',
+        'daily'        => 'Täglich',
+    ];
+    $pullModeLabels = [
+        'full'        => 'Voll',
+        'incremental' => 'Inkrementell',
+    ];
+    $modeLabels = [
+        'append' => 'Append',
+        'upsert' => 'Upsert',
+    ];
+@endphp
+
 <x-ui-page>
     <x-slot name="navbar">
         <x-ui-page-navbar title="" />
@@ -7,91 +36,163 @@
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'Datawarehouse', 'href' => route('datawarehouse.dashboard'), 'icon' => 'circle-stack'],
             ['label' => $stream->name],
-        ]" />
+        ]">
+            @if($stream->status === 'active')
+                <x-ui-button variant="secondary-ghost" size="sm" wire:click="pause">
+                    @svg('heroicon-o-pause', 'w-4 h-4')
+                    <span>Pausieren</span>
+                </x-ui-button>
+            @elseif($stream->status === 'paused')
+                <x-ui-button variant="primary" size="sm" wire:click="resume">
+                    @svg('heroicon-o-play', 'w-4 h-4')
+                    <span>Fortsetzen</span>
+                </x-ui-button>
+                <x-ui-button variant="secondary-ghost" size="sm" wire:click="archive">
+                    @svg('heroicon-o-archive-box', 'w-4 h-4')
+                    <span>Archivieren</span>
+                </x-ui-button>
+            @elseif($stream->status === 'archived')
+                <x-ui-button variant="secondary-ghost" size="sm" wire:click="unarchive">
+                    @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4')
+                    <span>Zurückholen</span>
+                </x-ui-button>
+            @endif
+            @if($stream->isPull() && $stream->status === 'active')
+                <x-ui-button variant="primary" size="sm" wire:click="triggerPull">
+                    @svg('heroicon-o-arrow-down-tray', 'w-4 h-4')
+                    <span>Pull starten</span>
+                </x-ui-button>
+            @endif
+            <x-ui-button variant="ghost" size="sm" wire:click="openResetModal">
+                @svg('heroicon-o-arrow-path', 'w-4 h-4')
+                <span>Re-Onboarding</span>
+            </x-ui-button>
+            <x-ui-button variant="danger" size="sm" iconOnly wire:click="openDeleteModal" title="Datenstrom löschen">
+                @svg('heroicon-o-trash', 'w-4 h-4')
+            </x-ui-button>
+        </x-ui-page-actionbar>
+    </x-slot>
+
+    <x-slot name="sidebar">
+        <x-ui-page-sidebar title="Informationen" width="w-80" :defaultOpen="true" side="left">
+            <div class="p-6 space-y-6">
+                <div>
+                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-3">Status</h3>
+                    <div class="space-y-3">
+                        @if($stream->status === 'active')
+                            <x-ui-badge variant="success" size="sm">Aktiv</x-ui-badge>
+                        @elseif($stream->status === 'paused')
+                            <x-ui-badge variant="secondary" size="sm">Pausiert</x-ui-badge>
+                        @elseif($stream->status === 'archived')
+                            <x-ui-badge variant="secondary" size="sm">Archiviert</x-ui-badge>
+                        @endif
+                        @if($stream->last_status === 'success')
+                            <x-ui-badge variant="success" size="sm">Letzter Lauf: Erfolg</x-ui-badge>
+                        @elseif($stream->last_status === 'error')
+                            <x-ui-badge variant="danger" size="sm">Letzter Lauf: Fehler</x-ui-badge>
+                        @elseif($stream->last_status === 'partial')
+                            <x-ui-badge variant="warning" size="sm">Letzter Lauf: Teilweise</x-ui-badge>
+                        @endif
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-3">Details</h3>
+                    <div class="space-y-3">
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Quelle</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)]">{{ $sourceLabels[$stream->source_type] ?? $stream->source_type }}</div>
+                        </div>
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Sync-Strategie</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)]">{{ $strategyLabels[$stream->sync_strategy] ?? $stream->sync_strategy ?? '—' }}</div>
+                        </div>
+                        @if($stream->natural_key)
+                            <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                                <span class="text-xs text-[var(--ui-muted)]">Natural Key</span>
+                                <div class="text-sm font-medium text-[var(--ui-secondary)] font-mono">{{ $stream->natural_key }}</div>
+                            </div>
+                        @endif
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Slug</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)] font-mono">{{ $stream->slug ?? '—' }}</div>
+                        </div>
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Tabelle</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)] font-mono">{{ $stream->table_name ?? '—' }}</div>
+                            <div class="text-xs text-[var(--ui-muted)]">Schema v{{ $stream->schema_version ?? 0 }}</div>
+                        </div>
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Erstellt</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)]">{{ $stream->created_at->format('d.m.Y H:i') }}</div>
+                        </div>
+                        @if($stream->last_run_at)
+                            <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                                <span class="text-xs text-[var(--ui-muted)]">Letzter Lauf</span>
+                                <div class="text-sm font-medium text-[var(--ui-secondary)]">{{ $stream->last_run_at->diffForHumans() }}</div>
+                                <div class="text-xs text-[var(--ui-muted)]">{{ $stream->last_run_at->format('d.m.Y H:i:s') }}</div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-3">Statistik</h3>
+                    <div class="space-y-3">
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Zeilen</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)] tabular-nums">{{ number_format($rowCount ?? 0, 0, ',', '.') }}</div>
+                        </div>
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Spalten</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)] tabular-nums">{{ $columns->count() }}</div>
+                        </div>
+                        <div class="py-3 px-4 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/40">
+                            <span class="text-xs text-[var(--ui-muted)]">Imports</span>
+                            <div class="text-sm font-medium text-[var(--ui-secondary)] tabular-nums">{{ $imports->count() }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </x-ui-page-sidebar>
+    </x-slot>
+
+    <x-slot name="activity">
+        <x-ui-page-sidebar title="Import-Log" width="w-80" :defaultOpen="false" storeKey="dwStreamActivityOpen" side="right">
+            <div class="divide-y divide-[var(--ui-border)]">
+                @forelse($imports->take(20) as $import)
+                    <div class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            @if($import->status === 'success')
+                                <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+                            @elseif($import->status === 'error')
+                                <span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                            @elseif($import->status === 'partial')
+                                <span class="w-2 h-2 rounded-full bg-yellow-500 shrink-0"></span>
+                            @else
+                                <span class="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
+                            @endif
+                            <span class="text-xs font-medium text-[var(--ui-secondary)]">#{{ $import->id }}</span>
+                            <span class="text-xs text-[var(--ui-muted)]">{{ $import->created_at->diffForHumans() }}</span>
+                        </div>
+                        <div class="text-xs text-[var(--ui-muted)] mt-1 ml-4">
+                            {{ $import->rows_imported }}/{{ $import->rows_received }} Zeilen
+                            @if($import->duration_ms) &middot; {{ $import->duration_ms }}ms @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-4 py-6 text-center text-xs text-[var(--ui-muted)]">Noch keine Imports.</div>
+                @endforelse
+            </div>
+        </x-ui-page-sidebar>
     </x-slot>
 
     <x-ui-page-container>
+        @if($flash)
+            <div class="mb-4 p-2 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[11px]">{{ $flash }}</div>
+        @endif
+
         <div class="space-y-6">
-            {{-- Header --}}
-            <div class="flex items-start justify-between">
-                <div class="min-w-0">
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <h1 class="text-xl font-semibold text-gray-900">{{ $stream->name }}</h1>
-                        @if($stream->status === 'active')
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700">Aktiv</span>
-                        @elseif($stream->status === 'paused')
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">Pausiert</span>
-                        @elseif($stream->status === 'archived')
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-200 text-gray-600">Archiviert</span>
-                        @endif
-                    </div>
-                    @if($stream->description)
-                        <p class="text-[13px] text-gray-500 mt-1">{{ $stream->description }}</p>
-                    @endif
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    @if($stream->status === 'active')
-                        <button wire:click="pause" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">
-                            @svg('heroicon-o-pause', 'w-4 h-4')
-                            Pausieren
-                        </button>
-                    @elseif($stream->status === 'paused')
-                        <button wire:click="resume" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
-                            @svg('heroicon-o-play', 'w-4 h-4')
-                            Fortsetzen
-                        </button>
-                        <button wire:click="archive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">
-                            @svg('heroicon-o-archive-box', 'w-4 h-4')
-                            Archivieren
-                        </button>
-                    @elseif($stream->status === 'archived')
-                        <button wire:click="unarchive" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">
-                            @svg('heroicon-o-arrow-uturn-left', 'w-4 h-4')
-                            Zurückholen
-                        </button>
-                    @endif
-                    <button
-                        wire:click="openResetModal"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-300 bg-white text-amber-700 text-[13px] font-medium hover:bg-amber-50 transition-colors"
-                        title="Stream zurücksetzen und neu konfigurieren"
-                    >
-                        @svg('heroicon-o-arrow-path', 'w-4 h-4')
-                        Re-Onboarding
-                    </button>
-                    <button
-                        wire:click="openDeleteModal"
-                        class="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Datenstrom löschen"
-                    >
-                        @svg('heroicon-o-trash', 'w-4 h-4')
-                    </button>
-                </div>
-            </div>
-
-            {{-- Stats --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
-                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Zeilen</div>
-                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $rowCount ?? 0 }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">in Tabelle</div>
-                </div>
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
-                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Imports</div>
-                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $imports->count() }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">letzte 50</div>
-                </div>
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
-                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Spalten</div>
-                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $columns->count() }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">konfiguriert</div>
-                </div>
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
-                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Schema v.</div>
-                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $stream->schema_version }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">Migrationen</div>
-                </div>
-            </div>
-
             {{-- Tabs --}}
             <div class="border-b border-gray-200">
                 <nav class="flex gap-1">
@@ -117,35 +218,6 @@
 
             {{-- Tab: Übersicht --}}
             @if($activeTab === 'overview')
-                @php
-                    $scheduleLabels = [
-                        'every_minute' => 'Jede Minute',
-                        'every_5_min'  => 'Alle 5 Minuten',
-                        'every_15_min' => 'Alle 15 Minuten',
-                        'hourly'       => 'Stündlich',
-                        'daily'        => 'Täglich',
-                    ];
-                    $sourceLabels = [
-                        'webhook_post' => 'Webhook (POST)',
-                        'pull_get'     => 'Pull (HTTP GET)',
-                        'manual'       => 'Manuell (CSV/Excel)',
-                    ];
-                    $modeLabels = [
-                        'append' => 'Append',
-                        'upsert' => 'Upsert',
-                    ];
-                    $strategyLabels = [
-                        'append'   => 'Append-Only',
-                        'current'  => 'Current (Upsert)',
-                        'snapshot' => 'Snapshot',
-                        'scd2'     => 'SCD Type 2',
-                    ];
-                    $pullModeLabels = [
-                        'full'        => 'Voll',
-                        'incremental' => 'Inkrementell',
-                    ];
-                @endphp
-
                 <div class="space-y-6">
                     {{-- Allgemein --}}
                     <section class="bg-white rounded-lg border border-gray-200">
@@ -176,10 +248,6 @@
                                         <span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">Pausiert</span>
                                     @elseif($stream->status === 'archived')
                                         <span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-medium">Archiviert</span>
-                                    @elseif($stream->status === 'onboarding')
-                                        <span class="text-[11px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">Onboarding</span>
-                                    @else
-                                        <span class="text-[11px] text-gray-400">{{ $stream->status }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -284,9 +352,6 @@
                                 <p class="text-[11px] text-gray-400 mt-0.5">Verbindung, Endpoint und Cursor-Zustand</p>
                             </div>
                             <div class="p-4 space-y-4 text-[13px]">
-                                @if($flash)
-                                    <div class="p-2 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[11px]">{{ $flash }}</div>
-                                @endif
                                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
                                     <div>
                                         <div class="text-[11px] text-gray-400">Verbindung</div>
@@ -313,9 +378,6 @@
                                         <div class="text-[11px] text-gray-400">Frequenz</div>
                                         <div class="text-gray-700">
                                             {{ $scheduleLabels[$stream->pull_schedule] ?? $stream->pull_schedule ?? '—' }}
-                                            @if($stream->pull_schedule)
-                                                <div class="text-[11px] text-gray-400 font-mono">{{ $stream->pull_schedule }}</div>
-                                            @endif
                                         </div>
                                     </div>
                                     <div>
@@ -348,15 +410,9 @@
                                         </div>
                                     @endif
                                 </div>
-                                <div class="flex items-center gap-2 pt-3 border-t border-gray-200">
-                                    <button wire:click="triggerPull" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
-                                        @svg('heroicon-o-arrow-down-tray', 'w-4 h-4')
-                                        Pull jetzt starten
-                                    </button>
-                                    @if(!$stream->connection_id || !$stream->endpoint_key)
-                                        <span class="text-[11px] text-red-600">Verbindung oder Endpoint fehlen.</span>
-                                    @endif
-                                </div>
+                                @if(!$stream->connection_id || !$stream->endpoint_key)
+                                    <div class="text-[11px] text-red-600 pt-2 border-t border-gray-200">Verbindung oder Endpoint fehlen.</div>
+                                @endif
                             </div>
                         </section>
                     @endif
@@ -479,9 +535,6 @@
                         <h3 class="text-sm font-semibold text-gray-900">Spalten</h3>
                         <p class="text-[11px] text-gray-400 mt-0.5">Konfigurierte Felder des Datenstroms</p>
                     </div>
-                    @if($flash)
-                        <div class="mx-4 mt-4 p-2 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[11px]">{{ $flash }}</div>
-                    @endif
                     @if($columns->isEmpty())
                         <div class="p-6 text-center text-[13px] text-gray-500">Keine Spalten konfiguriert.</div>
                     @else
@@ -604,10 +657,10 @@
                             @endif
 
                             <div class="mt-4 pt-3 border-t border-gray-200">
-                                <button wire:click="openRelationModal" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
+                                <x-ui-button variant="primary" size="sm" wire:click="openRelationModal">
                                     @svg('heroicon-o-plus', 'w-4 h-4')
-                                    Relation hinzufügen
-                                </button>
+                                    <span>Relation hinzufügen</span>
+                                </x-ui-button>
                             </div>
                         </div>
                     </section>
@@ -649,10 +702,6 @@
                                 </table>
                             </div>
                         </section>
-                    @endif
-
-                    @if($flash)
-                        <div class="p-2 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[11px]">{{ $flash }}</div>
                     @endif
                 </div>
             @endif
