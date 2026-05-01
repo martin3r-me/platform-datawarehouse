@@ -248,7 +248,7 @@ class StreamDetail extends Component
             'status'           => 'onboarding',
             'table_name'       => null,
             'table_created'    => false,
-            'sync_strategy'    => null,
+            'sync_strategy'    => 'append',
             'natural_key'      => null,
             'change_detection' => true,
             'soft_delete'      => false,
