@@ -67,7 +67,7 @@ class DatawarehouseStreamColumn extends Model
         // Safety net: auto-fix German decimal values for decimal columns,
         // even when no explicit transform is configured.
         if (!$this->transform && $this->data_type === 'decimal') {
-            if (is_string($value) && preg_match('/^-?\d{1,3}(?:\.\d{3})*,\d+$/', trim($value))) {
+            if (is_string($value) && preg_match('/^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d+$/', trim($value))) {
                 return $this->castGermanDecimal($value);
             }
 

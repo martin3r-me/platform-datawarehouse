@@ -50,8 +50,9 @@ class DataTypeDetector
             return 'decimal';
         }
 
-        // German decimal (1.234,56 or 1234,56) — comma as decimal separator
-        if (preg_match('/^-?\d{1,3}(?:\.\d{3})*,\d+$/', $str)) {
+        // German decimal (1.234,56 or 28524,8) — comma as decimal separator,
+        // optionally with dot thousands separators.
+        if (preg_match('/^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d+$/', $str)) {
             return 'german_decimal';
         }
 
@@ -65,8 +66,16 @@ class DataTypeDetector
             return 'date';
         }
 
-        // Long text (> 255 chars)
-        if (mb_strlen($str) > 255) {
+        // Multi-line content (notes, descriptions, comments) → text.
+        // VARCHAR is the wrong shape for content that contains line breaks,
+        // and such fields almost always grow over time.
+        if (str_contains($str, "\n") || str_contains($str, "\r")) {
+            return 'text';
+        }
+
+        // Promote to text well before the VARCHAR(255) ceiling so future
+        // values that exceed the sampled max don't truncate at insert time.
+        if (mb_strlen($str) > 100) {
             return 'text';
         }
 
