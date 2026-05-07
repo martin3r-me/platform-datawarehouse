@@ -233,6 +233,22 @@ class StreamDetail extends Component
             return;
         }
 
+        // Capture the current column configuration before deleting it,
+        // so the onboarding form can pre-fill with the (possibly auto-
+        // promoted or manually corrected) types instead of falling back
+        // to fresh detection from a stale sample.
+        $previousColumns = $this->stream->columns->mapWithKeys(fn ($col) => [
+            $col->source_key => [
+                'data_type'   => $col->data_type,
+                'transform'   => $col->transform,
+                'precision'   => $col->precision,
+                'scale'       => $col->scale,
+                'is_nullable' => (bool) $col->is_nullable,
+                'is_indexed'  => (bool) $col->is_indexed,
+                'label'       => $col->label,
+            ],
+        ])->toArray();
+
         // Drop the dynamic table
         if ($this->stream->table_created) {
             $schema->dropTable($this->stream, Auth::id());
@@ -242,6 +258,9 @@ class StreamDetail extends Component
         $this->stream->columns()->delete();
         $this->stream->imports()->delete();
         $this->stream->schemaMigrations()->delete();
+
+        $metadata = $this->stream->metadata ?? [];
+        $metadata['previous_columns'] = $previousColumns;
 
         // Reset stream to onboarding state
         $this->stream->update([
@@ -255,6 +274,7 @@ class StreamDetail extends Component
             'schema_version'   => 0,
             'last_cursor'      => null,
             'last_pull_at'     => null,
+            'metadata'         => $metadata,
         ]);
 
         $this->redirect(route('datawarehouse.stream.onboarding', $this->stream));

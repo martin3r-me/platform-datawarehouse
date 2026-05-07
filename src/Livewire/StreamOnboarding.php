@@ -89,6 +89,11 @@ class StreamOnboarding extends Component
 
         $detectedTypes = DataTypeDetector::detectFromPayload($sample);
 
+        // After Re-Onboarding, the previous activation's column config is
+        // stashed in metadata so we don't lose auto-promoted or manually
+        // corrected types when the stale sample would re-detect them wrong.
+        $previousColumns = $this->stream->metadata['previous_columns'] ?? [];
+
         $this->fields = [];
         $position = 0;
         foreach ($detectedTypes as $key => $type) {
@@ -99,13 +104,17 @@ class StreamOnboarding extends Component
                 $transform = 'cast_german_decimal';
             }
 
+            $prev = $previousColumns[$key] ?? null;
+
             $this->fields[] = [
                 'source_key'  => $key,
-                'label'       => $this->humanizeKey($key),
-                'data_type'   => $type,
-                'is_nullable' => true,
-                'is_indexed'  => false,
-                'transform'   => $transform,
+                'label'       => $prev['label'] ?? $this->humanizeKey($key),
+                'data_type'   => $prev['data_type'] ?? $type,
+                'is_nullable' => $prev['is_nullable'] ?? true,
+                'is_indexed'  => $prev['is_indexed'] ?? false,
+                'transform'   => $prev['transform'] ?? $transform,
+                'precision'   => $prev['precision'] ?? null,
+                'scale'       => $prev['scale'] ?? null,
                 'selected'    => true,
                 'position'    => $position++,
             ];
@@ -193,6 +202,8 @@ class StreamOnboarding extends Component
                 'column_name' => $columnName,
                 'label'       => $field['label'],
                 'data_type'   => $field['data_type'],
+                'precision'   => $field['precision'] ?? null,
+                'scale'       => $field['scale'] ?? null,
                 'is_nullable' => $field['is_nullable'],
                 'is_indexed'  => $field['is_indexed'],
                 'transform'   => !empty($field['transform']) ? $field['transform'] : null,
@@ -211,8 +222,15 @@ class StreamOnboarding extends Component
             return;
         }
 
-        // Set status to active
-        $this->stream->update(['status' => 'active']);
+        // Set status to active and clean up the Re-Onboarding handoff
+        // (previous_columns was only meaningful while the form was open).
+        $metadata = $this->stream->metadata ?? [];
+        unset($metadata['previous_columns']);
+
+        $this->stream->update([
+            'status'   => 'active',
+            'metadata' => $metadata,
+        ]);
 
         // Import any pending payloads
         $this->importPendingPayloads($user->id);
