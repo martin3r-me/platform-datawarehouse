@@ -84,6 +84,18 @@ class DatawarehouseStreamColumn extends Model
             // (or the configured transform) handles the cast.
         }
 
+        // Auto-promote string (VARCHAR(255)) columns to text when a value
+        // exceeds 255 chars. Same rationale as decimal promotion: free-text
+        // fields like notes/comments grow over time and the onboarding
+        // sample rarely captures the maximum length.
+        if (
+            $this->data_type === 'string'
+            && is_string($value)
+            && mb_strlen($value) > 255
+        ) {
+            $this->autoPromoteStringToText();
+        }
+
         // Safety net: auto-fix German decimal values for decimal columns,
         // even when no explicit transform is configured.
         if (!$this->transform && $this->data_type === 'decimal') {
@@ -167,6 +179,40 @@ class DatawarehouseStreamColumn extends Model
             $this->save();
 
             Log::error("Auto-promote integer→decimal failed for column {$this->column_name} (stream {$this->stream_id}): {$e->getMessage()}");
+            throw $e;
+        }
+    }
+
+    /**
+     * Migrate this column from string (VARCHAR(255)) to text in-place.
+     * Triggered the first time a value longer than 255 chars arrives.
+     * Idempotent and rollback-safe like the decimal promotion above.
+     */
+    protected function autoPromoteStringToText(): void
+    {
+        $fresh = self::find($this->id);
+        if ($fresh && $fresh->data_type !== 'string') {
+            $this->forceFill($fresh->getAttributes());
+            $this->syncOriginal();
+            return;
+        }
+
+        $rollback = ['data_type' => 'string'];
+
+        $this->data_type = 'text';
+        $this->save();
+
+        try {
+            app(StreamSchemaService::class)->modifyColumn(
+                $this->stream,
+                $this,
+                $rollback
+            );
+        } catch (\Throwable $e) {
+            $this->forceFill($rollback);
+            $this->save();
+
+            Log::error("Auto-promote string→text failed for column {$this->column_name} (stream {$this->stream_id}): {$e->getMessage()}");
             throw $e;
         }
     }
