@@ -4,9 +4,14 @@ namespace Platform\Datawarehouse\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
+use Platform\Datawarehouse\Services\StreamSchemaService;
 
 class DatawarehouseStreamColumn extends Model
 {
+    /** Pattern matching German-decimal strings (1.234,56 or 28524,8). */
+    protected const GERMAN_DECIMAL_PATTERN = '/^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d+$/';
+
     protected $table = 'datawarehouse_stream_columns';
 
     protected $fillable = [
@@ -64,10 +69,25 @@ class DatawarehouseStreamColumn extends Model
             return $value;
         }
 
+        // Auto-promote integer columns to decimal when a German-decimal value
+        // arrives. Sample-based detection often misses decimals when the
+        // sample only contained zero-valued numeric cells; this self-heals
+        // the schema on first sight rather than failing the import.
+        if (
+            !$this->transform
+            && $this->data_type === 'integer'
+            && is_string($value)
+            && preg_match(self::GERMAN_DECIMAL_PATTERN, trim($value))
+        ) {
+            $this->autoPromoteIntegerToDecimal();
+            // Fall through — column is now decimal, the safety-net below
+            // (or the configured transform) handles the cast.
+        }
+
         // Safety net: auto-fix German decimal values for decimal columns,
         // even when no explicit transform is configured.
         if (!$this->transform && $this->data_type === 'decimal') {
-            if (is_string($value) && preg_match('/^-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d+$/', trim($value))) {
+            if (is_string($value) && preg_match(self::GERMAN_DECIMAL_PATTERN, trim($value))) {
                 return $this->castGermanDecimal($value);
             }
 
@@ -101,5 +121,53 @@ class DatawarehouseStreamColumn extends Model
         $value = str_replace(',', '.', $value);          // swap decimal comma
 
         return (float) $value;
+    }
+
+    /**
+     * Migrate this column from integer to decimal in-place: persist the new
+     * type/transform, ALTER the dynamic table, and update the in-memory
+     * instance so the rest of the import sees the new state.
+     *
+     * Idempotent: if a concurrent process already promoted the column,
+     * we re-sync from the DB and skip the ALTER.
+     */
+    protected function autoPromoteIntegerToDecimal(): void
+    {
+        $fresh = self::find($this->id);
+        if ($fresh && $fresh->data_type !== 'integer') {
+            // Already promoted by another row/process — adopt the fresh state.
+            $this->forceFill($fresh->getAttributes());
+            $this->syncOriginal();
+            return;
+        }
+
+        $rollback = [
+            'data_type' => 'integer',
+            'transform' => $this->transform,
+            'precision' => $this->precision,
+            'scale'     => $this->scale,
+        ];
+
+        $this->data_type = 'decimal';
+        $this->transform = 'cast_german_decimal';
+        $this->precision = $this->precision ?? 10;
+        $this->scale     = $this->scale ?? 2;
+        $this->save();
+
+        try {
+            app(StreamSchemaService::class)->modifyColumn(
+                $this->stream,
+                $this,
+                ['data_type' => 'integer', 'transform' => $rollback['transform']]
+            );
+        } catch (\Throwable $e) {
+            // Roll back the model state so a retried import doesn't drift
+            // from the actual table schema.
+            $this->forceFill($rollback);
+            $this->save();
+
+            Log::error("Auto-promote integer→decimal failed for column {$this->column_name} (stream {$this->stream_id}): {$e->getMessage()}");
+            throw $e;
+        }
     }
 }
