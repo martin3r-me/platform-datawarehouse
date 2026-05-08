@@ -47,6 +47,14 @@
                         @svg('heroicon-o-pencil', 'w-4 h-4')
                         Bearbeiten
                     </a>
+                    <button
+                        wire:click="openDeleteModal"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-200 bg-white text-red-600 text-[13px] font-medium hover:bg-red-50 transition-colors"
+                        title="Kennzahl löschen"
+                    >
+                        @svg('heroicon-o-trash', 'w-4 h-4')
+                        Löschen
+                    </button>
                 </div>
             </div>
 
@@ -280,5 +288,37 @@
                 </div>
             </section>
         </div>
+
+        {{-- Delete KPI Modal --}}
+        <x-ui-modal wire:model="showDeleteModal" title="Kennzahl löschen" maxWidth="lg">
+            <div class="space-y-4">
+                <div class="p-4 rounded-md bg-red-50 border border-red-200">
+                    <div class="flex items-start gap-3">
+                        @svg('heroicon-o-exclamation-triangle', 'w-5 h-5 text-red-500 shrink-0 mt-0.5')
+                        <div>
+                            <p class="text-[13px] font-medium text-red-800">Kennzahl wirklich löschen?</p>
+                            <p class="text-[13px] text-red-700 mt-1">
+                                Die Kennzahl <strong>{{ $kpi->name }}</strong> wird entfernt und verschwindet aus allen Dashboards, in denen sie verwendet wird.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <x-slot name="footer">
+                <div class="flex justify-end gap-2">
+                    <button wire:click="cancelDelete" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">
+                        Abbrechen
+                    </button>
+                    <button
+                        wire:click="delete"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-600 text-white text-[13px] font-medium hover:bg-red-700 transition-colors"
+                    >
+                        @svg('heroicon-o-trash', 'w-4 h-4')
+                        Löschen
+                    </button>
+                </div>
+            </x-slot>
+        </x-ui-modal>
     </x-ui-page-container>
 </x-ui-page>

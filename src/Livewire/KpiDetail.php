@@ -17,6 +17,8 @@ class KpiDetail extends Component
     public bool $rangesLoaded = false;
     public bool $rangesLoading = false;
 
+    public bool $showDeleteModal = false;
+
     public function mount(DatawarehouseKpi $kpi): void
     {
         $user = Auth::user();
@@ -54,6 +56,26 @@ class KpiDetail extends Component
         } catch (\Throwable) {
             $this->kpi->refresh();
         }
+    }
+
+    public function openDeleteModal(): void
+    {
+        $this->showDeleteModal = true;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->showDeleteModal = false;
+    }
+
+    public function delete(): void
+    {
+        // Detach pivot rows so deleted KPIs don't leave orphans on dashboards.
+        // Snapshots stay (cascade on hard-delete; harmless under soft-delete).
+        $this->kpi->dashboards()->detach();
+        $this->kpi->delete();
+
+        $this->redirect(route('datawarehouse.dashboard'));
     }
 
     #[Computed]
