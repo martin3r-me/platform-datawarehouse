@@ -25,6 +25,9 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-700">Fehler</span>
                         @endif
                     </div>
+                    @if($kpi->description)
+                        <p class="text-[13px] text-gray-600 mt-1 max-w-2xl whitespace-pre-line">{{ $kpi->description }}</p>
+                    @endif
                     @if($kpi->unit)
                         <p class="text-[13px] text-gray-500 mt-1">{{ $kpi->unit }}</p>
                     @endif

@@ -18,6 +18,7 @@ class KpiEditor extends Component
 
     // Step 4: Meta
     public string $name = '';
+    public ?string $description = null;
     public string $icon = 'chart-bar';
     public string $variant = 'primary';
     public ?string $unit = null;
@@ -55,6 +56,7 @@ class KpiEditor extends Component
 
             $this->kpiId = $kpi->id;
             $this->name = $kpi->name;
+            $this->description = $kpi->description;
             $this->icon = $kpi->icon;
             $this->variant = $kpi->variant;
             $this->unit = $kpi->unit;
@@ -316,7 +318,8 @@ class KpiEditor extends Component
     public function save(): void
     {
         $this->validate([
-            'name' => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
         ]);
 
         $user = Auth::user();
@@ -348,6 +351,7 @@ class KpiEditor extends Component
 
         $data = [
             'name'          => $this->name,
+            'description'   => $this->description ?: null,
             'icon'          => $this->icon,
             'variant'       => $this->variant,
             'unit'          => $this->unit ?: null,

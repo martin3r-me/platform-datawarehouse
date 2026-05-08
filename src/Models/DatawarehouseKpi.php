@@ -20,6 +20,7 @@ class DatawarehouseKpi extends Model
         'team_id',
         'user_id',
         'name',
+        'description',
         'icon',
         'variant',
         'unit',

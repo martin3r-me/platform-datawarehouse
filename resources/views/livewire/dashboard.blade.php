@@ -62,11 +62,16 @@
                             <div class="relative group {{ $kpi->status === 'error' ? 'ring-2 ring-red-300 rounded-lg' : '' }}">
                                 <a href="{{ route('datawarehouse.kpi.detail', $kpi) }}" class="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
                                     <div class="flex items-start justify-between mb-2">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
                                                 @svg('heroicon-o-' . $kpi->icon, 'w-4 h-4 text-[#166EE1]')
                                             </div>
-                                            <div class="text-[13px] font-medium text-gray-900">{{ $kpi->name }}</div>
+                                            <div class="min-w-0">
+                                                <div class="text-[13px] font-medium text-gray-900 truncate">{{ $kpi->name }}</div>
+                                                @if($kpi->description)
+                                                    <div class="text-[11px] text-gray-500 line-clamp-2 leading-snug">{{ $kpi->description }}</div>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="text-2xl font-bold text-gray-900 tabular-nums">

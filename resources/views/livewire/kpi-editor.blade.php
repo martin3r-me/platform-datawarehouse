@@ -449,6 +449,9 @@
                                 @if($unit)
                                     <div class="text-[11px] text-gray-400 mt-1">{{ $unit }}</div>
                                 @endif
+                                @if($description)
+                                    <p class="text-[11px] text-gray-500 mt-2 leading-snug">{{ $description }}</p>
+                                @endif
                             </div>
                         </div>
                         <div class="flex justify-center gap-3 pb-4">
@@ -480,6 +483,19 @@
                                     class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
                                 >
                                 @error('name')
+                                    <p class="text-[11px] text-red-500 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Beschreibung</label>
+                                <textarea
+                                    wire:model.live="description"
+                                    rows="2"
+                                    placeholder="Kurzer Hinweis, was diese Kennzahl misst (optional)"
+                                    class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1] resize-none"
+                                ></textarea>
+                                @error('description')
                                     <p class="text-[11px] text-red-500 mt-1">{{ $message }}</p>
                                 @enderror
                             </div>

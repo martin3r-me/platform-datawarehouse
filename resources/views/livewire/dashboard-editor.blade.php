@@ -85,6 +85,9 @@
                                     </div>
                                     <div class="min-w-0">
                                         <div class="text-[13px] font-medium text-gray-900 truncate">{{ $kpi->name }}</div>
+                                        @if($kpi->description)
+                                            <div class="text-[11px] text-gray-500 truncate">{{ $kpi->description }}</div>
+                                        @endif
                                         <div class="text-[11px] text-gray-400">
                                             {{ $kpi->cached_value !== null ? number_format((float) $kpi->cached_value, $kpi->decimals, ',', '.') : '-' }}
                                             @if($kpi->unit) {{ $kpi->unit }} @endif
@@ -143,7 +146,10 @@
                                     @svg('heroicon-o-' . $kpi->icon, 'w-4 h-4 text-gray-700')
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <div class="text-[13px] font-medium text-gray-900">{{ $kpi->name }}</div>
+                                    <div class="text-[13px] font-medium text-gray-900 truncate">{{ $kpi->name }}</div>
+                                    @if($kpi->description)
+                                        <div class="text-[11px] text-gray-500 truncate">{{ $kpi->description }}</div>
+                                    @endif
                                     <div class="text-[11px] text-gray-400">
                                         {{ $kpi->cached_value !== null ? number_format((float) $kpi->cached_value, $kpi->decimals, ',', '.') : '-' }}
                                         @if($kpi->unit) {{ $kpi->unit }} @endif
