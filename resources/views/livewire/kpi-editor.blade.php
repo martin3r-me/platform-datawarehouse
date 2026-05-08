@@ -144,83 +144,127 @@
                 <section class="bg-white rounded-lg border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">Berechnung</h3>
-                        <p class="text-[11px] text-gray-400 mt-0.5">Wähle die Aggregationsfunktion und Zielspalte</p>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Eine oder mehrere Aggregationen verknüpfen — z.&nbsp;B. SUMME(Spalte&nbsp;A) + SUMME(Spalte&nbsp;B)</p>
                     </div>
                     <div class="p-4 space-y-4">
-                        {{-- Aggregation Function --}}
-                        <div>
-                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Aggregation</label>
-                            <div class="flex gap-2">
-                                @foreach(['SUM' => 'Summe', 'COUNT' => 'Anzahl', 'AVG' => 'Durchschnitt', 'MIN' => 'Minimum', 'MAX' => 'Maximum'] as $func => $label)
-                                    <button
-                                        wire:click="$set('aggFunction', '{{ $func }}')"
-                                        class="px-4 py-2 rounded-full text-[13px] font-medium transition-colors
-                                            {{ $aggFunction === $func
-                                                ? 'bg-[#166EE1] text-white'
-                                                : 'bg-white text-gray-700 border border-gray-300 hover:border-[#166EE1]' }}"
-                                    >
-                                        {{ $label }}
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
+                        @foreach($aggregations as $aIndex => $term)
+                            @php
+                                $termFunc   = $term['function'] ?? 'SUM';
+                                $termColumn = $term['column'] ?? '';
+                                $termAlias  = $term['stream_alias'] ?? 's0';
+                            @endphp
 
-                        {{-- Column Selection --}}
-                        <div>
-                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Spalte</label>
-                            <select
-                                wire:model.live="aggColumn"
-                                class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
-                            >
-                                <option value="">— Spalte wählen —</option>
-                                @if($aggFunction === 'COUNT')
-                                    <option value="*" data-alias="s0">* (alle Zeilen)</option>
-                                @endif
-                                @foreach($this->availableColumns as $alias => $group)
-                                    <optgroup label="{{ $group['stream_name'] }} ({{ $alias }})">
-                                        @foreach($group['columns'] as $col)
-                                            @php
-                                                $isNumeric = in_array($col->data_type, ['integer', 'decimal']);
-                                                $show = in_array($aggFunction, ['COUNT', 'MIN', 'MAX']) || $isNumeric;
-                                            @endphp
-                                            @if($show)
-                                                <option
-                                                    value="{{ $col->column_name }}"
-                                                    {{ $aggColumn === $col->column_name && $aggStreamAlias === $alias ? 'selected' : '' }}
-                                                    wire:click="$set('aggStreamAlias', '{{ $alias }}')"
-                                                >
-                                                    {{ $col->label ?? $col->column_name }}
-                                                    ({{ $col->data_type }})
-                                                </option>
-                                            @endif
-                                        @endforeach
-                                    </optgroup>
-                                @endforeach
-                            </select>
-                            @if($aggColumn === '*')
-                                <input type="hidden" wire:model="aggStreamAlias" value="s0">
-                            @endif
-                        </div>
-
-                        {{-- Stream alias for selected column --}}
-                        @if($aggColumn && $aggColumn !== '*' && count($selectedStreams) > 1)
-                            <div>
-                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Aus Datenstrom</label>
-                                <select
-                                    wire:model.live="aggStreamAlias"
-                                    class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
-                                >
-                                    @foreach($this->availableColumns as $alias => $group)
-                                        @php
-                                            $hasColumn = $group['columns']->contains('column_name', $aggColumn);
-                                        @endphp
-                                        @if($hasColumn)
-                                            <option value="{{ $alias }}">{{ $group['stream_name'] }} ({{ $alias }})</option>
+                            <div class="rounded-md border border-gray-200 bg-gray-50/40 p-3 space-y-3" wire:key="agg-{{ $aIndex }}">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        @if($aIndex === 0)
+                                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Term {{ $aIndex + 1 }}</span>
+                                        @else
+                                            <label class="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Verknüpfen mit</label>
+                                            <select
+                                                wire:model.live="aggregations.{{ $aIndex }}.operator"
+                                                class="px-2 py-1 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900"
+                                            >
+                                                <option value="+">+ (addieren)</option>
+                                                <option value="-">− (abziehen)</option>
+                                                <option value="*">× (multiplizieren)</option>
+                                                <option value="/">÷ (dividieren)</option>
+                                            </select>
+                                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Term {{ $aIndex + 1 }}</span>
                                         @endif
-                                    @endforeach
-                                </select>
+                                    </div>
+                                    @if(count($aggregations) > 1)
+                                        <button
+                                            type="button"
+                                            wire:click="removeAggregation({{ $aIndex }})"
+                                            class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-red-200 bg-white text-red-600 text-[11px] font-medium hover:bg-red-50 transition-colors"
+                                            title="Term entfernen"
+                                        >
+                                            @svg('heroicon-o-x-mark', 'w-3.5 h-3.5')
+                                            Entfernen
+                                        </button>
+                                    @endif
+                                </div>
+
+                                {{-- Aggregation function pills --}}
+                                <div>
+                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Aggregation</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach(['SUM' => 'Summe', 'COUNT' => 'Anzahl', 'AVG' => 'Durchschnitt', 'MIN' => 'Minimum', 'MAX' => 'Maximum'] as $func => $label)
+                                            <button
+                                                type="button"
+                                                wire:click="setAggregationFunction({{ $aIndex }}, '{{ $func }}')"
+                                                class="px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors
+                                                    {{ $termFunc === $func
+                                                        ? 'bg-[#166EE1] text-white'
+                                                        : 'bg-white text-gray-700 border border-gray-300 hover:border-[#166EE1]' }}"
+                                            >
+                                                {{ $label }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                {{-- Column dropdown --}}
+                                <div>
+                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Spalte</label>
+                                    <select
+                                        wire:model.live="aggregations.{{ $aIndex }}.column"
+                                        class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
+                                    >
+                                        <option value="">— Spalte wählen —</option>
+                                        @if($termFunc === 'COUNT')
+                                            <option value="*">* (alle Zeilen)</option>
+                                        @endif
+                                        @foreach($this->availableColumns as $alias => $group)
+                                            <optgroup label="{{ $group['stream_name'] }} ({{ $alias }})">
+                                                @foreach($group['columns'] as $col)
+                                                    @php
+                                                        $isNumeric = in_array($col->data_type, ['integer', 'decimal']);
+                                                        $show = in_array($termFunc, ['COUNT', 'MIN', 'MAX']) || $isNumeric;
+                                                    @endphp
+                                                    @if($show)
+                                                        <option value="{{ $col->column_name }}">
+                                                            {{ $col->label ?? $col->column_name }}
+                                                            ({{ $col->data_type }} · {{ $alias }})
+                                                        </option>
+                                                    @endif
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                {{-- Stream alias selector when multiple streams are joined --}}
+                                @if($termColumn && $termColumn !== '*' && count($selectedStreams) > 1)
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Aus Datenstrom</label>
+                                        <select
+                                            wire:model.live="aggregations.{{ $aIndex }}.stream_alias"
+                                            class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
+                                        >
+                                            @foreach($this->availableColumns as $alias => $group)
+                                                @php $hasColumn = $group['columns']->contains('column_name', $termColumn); @endphp
+                                                @if($hasColumn)
+                                                    <option value="{{ $alias }}">{{ $group['stream_name'] }} ({{ $alias }})</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                             </div>
-                        @endif
+                        @endforeach
+
+                        <div>
+                            <button
+                                type="button"
+                                wire:click="addAggregation"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-dashed border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:border-[#166EE1] hover:text-[#166EE1] transition-colors"
+                            >
+                                @svg('heroicon-o-plus', 'w-4 h-4')
+                                Term hinzufügen
+                            </button>
+                        </div>
                     </div>
                 </section>
             @endif
@@ -607,9 +651,12 @@
                     @else
                         <div></div>
                     @endif
+                    @php
+                        $hasCompleteTerm = collect($aggregations)->contains(fn ($t) => !empty($t['column'] ?? null));
+                    @endphp
                     <button
                         wire:click="nextStep"
-                        @if(($step === 1 && empty($selectedStreams)) || ($step === 2 && empty($aggColumn))) disabled @endif
+                        @if(($step === 1 && empty($selectedStreams)) || ($step === 2 && !$hasCompleteTerm)) disabled @endif
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Weiter

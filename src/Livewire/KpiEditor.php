@@ -28,10 +28,12 @@ class KpiEditor extends Component
     // Step 1: Streams
     public array $selectedStreams = []; // [{stream_id, alias, join?: {relation_id, type}}]
 
-    // Step 2: Aggregation
-    public string $aggFunction = 'SUM';
-    public string $aggColumn = '';
-    public string $aggStreamAlias = 's0';
+    // Step 2: Aggregation (one or more terms combined with +, -, *, /)
+    // Each term: ['function' => 'SUM', 'column' => '...', 'stream_alias' => 's0', 'operator' => '+']
+    // The first term's operator is ignored; subsequent terms use it to chain.
+    public array $aggregations = [
+        ['function' => 'SUM', 'column' => '', 'stream_alias' => 's0', 'operator' => '+'],
+    ];
 
     // Step 3: Filters
     public array $filters = []; // [{stream_alias, column, operator, value}]
@@ -67,10 +69,23 @@ class KpiEditor extends Component
             $this->selectedStreams = $definition['streams'] ?? [];
             $this->filters = $definition['filters'] ?? [];
 
-            $agg = $definition['aggregation'] ?? [];
-            $this->aggFunction = $agg['function'] ?? 'SUM';
-            $this->aggColumn = $agg['column'] ?? '';
-            $this->aggStreamAlias = $agg['stream_alias'] ?? 's0';
+            // Load aggregations: prefer the new multi-term shape, fall back
+            // to the legacy single `aggregation` so existing KPIs still
+            // open in the editor.
+            $rawTerms = $definition['aggregations'] ?? null;
+            if (!is_array($rawTerms) || empty($rawTerms)) {
+                $legacy = $definition['aggregation'] ?? null;
+                $rawTerms = is_array($legacy) && !empty($legacy) ? [$legacy] : [];
+            }
+
+            if (!empty($rawTerms)) {
+                $this->aggregations = array_values(array_map(fn ($t) => [
+                    'function'     => $t['function'] ?? 'SUM',
+                    'column'       => $t['column'] ?? '',
+                    'stream_alias' => $t['stream_alias'] ?? 's0',
+                    'operator'     => $t['operator'] ?? '+',
+                ], $rawTerms));
+            }
 
             $cal = $definition['calendar_filters'] ?? null;
             if ($cal) {
@@ -92,7 +107,7 @@ class KpiEditor extends Component
         if ($this->step === 1 && empty($this->selectedStreams)) {
             return;
         }
-        if ($this->step === 2 && empty($this->aggColumn)) {
+        if ($this->step === 2 && !$this->hasAtLeastOneCompleteTerm()) {
             return;
         }
         if ($this->step < 4) {
@@ -119,10 +134,20 @@ class KpiEditor extends Component
         if (empty($this->selectedStreams)) {
             return 1;
         }
-        if (empty($this->aggColumn)) {
+        if (!$this->hasAtLeastOneCompleteTerm()) {
             return 2;
         }
         return 4;
+    }
+
+    private function hasAtLeastOneCompleteTerm(): bool
+    {
+        foreach ($this->aggregations as $term) {
+            if (!empty($term['column'])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // --- Step 1: Stream management ---
@@ -144,8 +169,9 @@ class KpiEditor extends Component
         ];
 
         // Reset dependent state
-        $this->aggColumn = '';
-        $this->aggStreamAlias = 's0';
+        $this->aggregations = [
+            ['function' => 'SUM', 'column' => '', 'stream_alias' => 's0', 'operator' => '+'],
+        ];
         $this->filters = [];
         $this->previewValue = null;
         $this->previewError = null;
@@ -215,9 +241,51 @@ class KpiEditor extends Component
             return in_array($f['stream_alias'] ?? 's0', $validAliases);
         }));
 
-        if (!in_array($this->aggStreamAlias, $validAliases)) {
-            $this->aggStreamAlias = 's0';
-            $this->aggColumn = '';
+        // Drop any aggregation term that referenced a removed stream alias.
+        $this->aggregations = array_values(array_filter(
+            $this->aggregations,
+            fn ($term) => in_array($term['stream_alias'] ?? 's0', $validAliases, true)
+        ));
+
+        if (empty($this->aggregations)) {
+            $this->aggregations = [
+                ['function' => 'SUM', 'column' => '', 'stream_alias' => 's0', 'operator' => '+'],
+            ];
+        }
+    }
+
+    // --- Step 2: Aggregation terms ---
+
+    public function addAggregation(): void
+    {
+        $this->aggregations[] = [
+            'function'     => 'SUM',
+            'column'       => '',
+            'stream_alias' => 's0',
+            'operator'     => '+',
+        ];
+    }
+
+    public function removeAggregation(int $index): void
+    {
+        if (count($this->aggregations) <= 1) {
+            return; // Always keep at least one term.
+        }
+        unset($this->aggregations[$index]);
+        $this->aggregations = array_values($this->aggregations);
+    }
+
+    public function setAggregationFunction(int $index, string $function): void
+    {
+        if (!isset($this->aggregations[$index])) {
+            return;
+        }
+        $this->aggregations[$index]['function'] = $function;
+
+        // COUNT supports the "*" wildcard; if a term switches away from
+        // COUNT we must clear "*" since other functions need a real column.
+        if ($function !== 'COUNT' && ($this->aggregations[$index]['column'] ?? '') === '*') {
+            $this->aggregations[$index]['column'] = '';
         }
     }
 
@@ -325,13 +393,14 @@ class KpiEditor extends Component
         $user = Auth::user();
         $team = $user->currentTeam;
 
+        $aggregations = $this->normalizedAggregationTerms();
+
         $definition = [
             'streams'       => $this->selectedStreams,
-            'aggregation'   => [
-                'function'     => $this->aggFunction,
-                'column'       => $this->aggColumn,
-                'stream_alias' => $this->aggStreamAlias,
-            ],
+            'aggregations'  => $aggregations,
+            // Mirror the first term to the legacy `aggregation` key so an
+            // older deployment that still reads it keeps working.
+            'aggregation'   => $aggregations[0] ?? null,
             'filters'       => array_values(array_filter($this->filters, fn($f) => !empty($f['column']))),
             'snapshot_mode' => 'latest',
         ];
@@ -470,13 +539,12 @@ class KpiEditor extends Component
     {
         $team = Auth::user()->currentTeam;
 
+        $aggregations = $this->normalizedAggregationTerms();
+
         $definition = [
             'streams'       => $this->selectedStreams,
-            'aggregation'   => [
-                'function'     => $this->aggFunction,
-                'column'       => $this->aggColumn,
-                'stream_alias' => $this->aggStreamAlias,
-            ],
+            'aggregations'  => $aggregations,
+            'aggregation'   => $aggregations[0] ?? null,
             'filters'       => array_values(array_filter($this->filters, fn($f) => !empty($f['column']))),
             'snapshot_mode' => 'latest',
         ];
@@ -509,6 +577,43 @@ class KpiEditor extends Component
         }
 
         return number_format($value, $this->decimals, ',', '.');
+    }
+
+    /**
+     * Drop empty terms and snap operators to a valid set before persisting.
+     * The first term's operator is irrelevant for SQL but normalized to '+'
+     * so the stored shape is consistent.
+     */
+    private function normalizedAggregationTerms(): array
+    {
+        $allowedOps = ['+', '-', '*', '/'];
+        $terms = [];
+
+        foreach ($this->aggregations as $term) {
+            if (empty($term['column'])) {
+                continue;
+            }
+
+            $operator = $term['operator'] ?? '+';
+            if (!in_array($operator, $allowedOps, true)) {
+                $operator = '+';
+            }
+
+            $terms[] = [
+                'function'     => $term['function'] ?? 'SUM',
+                'column'       => $term['column'],
+                'stream_alias' => $term['stream_alias'] ?? 's0',
+                'operator'     => $operator,
+            ];
+        }
+
+        // Force the first surviving term to use '+' so the persisted shape
+        // doesn't carry stale leading operators that the SQL builder ignores.
+        if (!empty($terms)) {
+            $terms[0]['operator'] = '+';
+        }
+
+        return $terms;
     }
 
     public function render()

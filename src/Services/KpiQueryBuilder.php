@@ -14,6 +14,7 @@ class KpiQueryBuilder
 {
     private const ALLOWED_AGGREGATIONS = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX'];
     private const ALLOWED_OPERATORS = ['=', '!=', '<', '>', '<=', '>=', 'LIKE'];
+    private const ALLOWED_TERM_OPERATORS = ['+', '-', '*', '/'];
     private const COLUMN_REGEX = '/^[a-zA-Z_][a-zA-Z0-9_]*$/';
     private const ALIAS_REGEX = '/^s\d+$/';
 
@@ -68,11 +69,10 @@ class KpiQueryBuilder
         $teamId = $kpi->team_id;
 
         $streams = $definition['streams'] ?? [];
-        $aggregation = $definition['aggregation'] ?? null;
         $filters = $definition['filters'] ?? [];
         $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
 
-        if (empty($streams) || !$aggregation) {
+        if (empty($streams) || empty($this->extractAggregationTerms($definition))) {
             throw new \InvalidArgumentException('KPI definition incomplete: streams and aggregation required.');
         }
 
@@ -146,27 +146,7 @@ class KpiQueryBuilder
             $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
         }
 
-        // Apply aggregation
-        $aggFunction = strtoupper($aggregation['function'] ?? 'SUM');
-        if (!in_array($aggFunction, self::ALLOWED_AGGREGATIONS, true)) {
-            throw new \InvalidArgumentException("Invalid aggregation function: {$aggFunction}");
-        }
-
-        $aggAlias = $aggregation['stream_alias'] ?? $baseAlias;
-        $aggColumn = $aggregation['column'] ?? '*';
-
-        if ($aggColumn === '*') {
-            if ($aggFunction !== 'COUNT') {
-                throw new \InvalidArgumentException('Wildcard (*) only allowed with COUNT.');
-            }
-            $selectRaw = 'COUNT(*) as kpi_result';
-        } else {
-            $this->validateColumnName($aggColumn);
-            $this->validateAlias($aggAlias);
-            $this->validateColumnExists($aggColumn, $resolvedStreams[$aggAlias] ?? null, $teamId);
-            $selectRaw = "{$aggFunction}({$aggAlias}.{$aggColumn}) as kpi_result";
-        }
-
+        $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $teamId);
         $result = $query->selectRaw($selectRaw)->first();
 
         return $result ? (float) $result->kpi_result : null;
@@ -199,11 +179,10 @@ class KpiQueryBuilder
             $definition = $kpi->definition;
             $teamId = $kpi->team_id;
             $streams = $definition['streams'] ?? [];
-            $aggregation = $definition['aggregation'] ?? null;
             $filters = $definition['filters'] ?? [];
             $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
 
-            if (empty($streams) || !$aggregation) {
+            if (empty($streams) || empty($this->extractAggregationTerms($definition))) {
                 throw new \InvalidArgumentException('KPI definition incomplete.');
             }
 
@@ -285,27 +264,7 @@ class KpiQueryBuilder
                 $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
             }
 
-            // Aggregation
-            $aggFunction = strtoupper($aggregation['function'] ?? 'SUM');
-            if (!in_array($aggFunction, self::ALLOWED_AGGREGATIONS, true)) {
-                throw new \InvalidArgumentException("Invalid aggregation function: {$aggFunction}");
-            }
-
-            $aggAlias = $aggregation['stream_alias'] ?? $baseAlias;
-            $aggColumn = $aggregation['column'] ?? '*';
-
-            if ($aggColumn === '*') {
-                if ($aggFunction !== 'COUNT') {
-                    throw new \InvalidArgumentException('Wildcard (*) only allowed with COUNT.');
-                }
-                $selectRaw = 'COUNT(*) as kpi_result';
-            } else {
-                $this->validateColumnName($aggColumn);
-                $this->validateAlias($aggAlias);
-                $this->validateColumnExists($aggColumn, $resolvedStreams[$aggAlias] ?? null, $teamId);
-                $selectRaw = "{$aggFunction}({$aggAlias}.{$aggColumn}) as kpi_result";
-            }
-
+            $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $teamId);
             $result = $query->selectRaw($selectRaw)->first();
 
             return $result ? (float) $result->kpi_result : null;
@@ -460,11 +419,10 @@ class KpiQueryBuilder
         $definition = $kpi->definition;
         $teamId = $kpi->team_id;
         $streams = $definition['streams'] ?? [];
-        $aggregation = $definition['aggregation'] ?? null;
         $filters = $definition['filters'] ?? [];
         $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
 
-        if (empty($streams) || !$aggregation) {
+        if (empty($streams) || empty($this->extractAggregationTerms($definition))) {
             return null;
         }
 
@@ -547,26 +505,97 @@ class KpiQueryBuilder
             $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
         }
 
-        // Aggregation
-        $aggFunction = strtoupper($aggregation['function'] ?? 'SUM');
-        if (!in_array($aggFunction, self::ALLOWED_AGGREGATIONS, true)) {
+        try {
+            $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $teamId, strict: false);
+        } catch (\InvalidArgumentException) {
             return null;
-        }
-
-        $aggAlias = $aggregation['stream_alias'] ?? $baseAlias;
-        $aggColumn = $aggregation['column'] ?? '*';
-
-        if ($aggColumn === '*') {
-            $selectRaw = 'COUNT(*) as kpi_result';
-        } else {
-            $this->validateColumnName($aggColumn);
-            $this->validateAlias($aggAlias);
-            $selectRaw = "{$aggFunction}({$aggAlias}.{$aggColumn}) as kpi_result";
         }
 
         $result = $query->selectRaw($selectRaw)->first();
 
         return $result ? (float) $result->kpi_result : null;
+    }
+
+    /**
+     * Build the SELECT clause that aggregates one or more terms into a
+     * single kpi_result. Supports the new `aggregations` shape (an ordered
+     * list of {function, column, stream_alias, operator}) and falls back
+     * to the legacy single `aggregation` shape.
+     *
+     * Set $strict=false to skip the DB-backed column-existence check
+     * (used in the per-range executors where the same KPI is run many
+     * times in a row).
+     */
+    private function buildAggregationSelect(
+        array $definition,
+        array $resolvedStreams,
+        string $baseAlias,
+        int $teamId,
+        bool $strict = true
+    ): string {
+        $terms = $this->extractAggregationTerms($definition);
+        if (empty($terms)) {
+            throw new \InvalidArgumentException('KPI definition incomplete: at least one aggregation term required.');
+        }
+
+        $expression = '';
+        foreach ($terms as $i => $term) {
+            $aggFunction = strtoupper($term['function'] ?? 'SUM');
+            if (!in_array($aggFunction, self::ALLOWED_AGGREGATIONS, true)) {
+                throw new \InvalidArgumentException("Invalid aggregation function: {$aggFunction}");
+            }
+
+            $aggAlias = $term['stream_alias'] ?? $baseAlias;
+            $aggColumn = $term['column'] ?? '*';
+
+            if ($aggColumn === '*') {
+                if ($aggFunction !== 'COUNT') {
+                    throw new \InvalidArgumentException('Wildcard (*) only allowed with COUNT.');
+                }
+                $piece = 'COUNT(*)';
+            } else {
+                $this->validateColumnName($aggColumn);
+                $this->validateAlias($aggAlias);
+                if ($strict) {
+                    $this->validateColumnExists($aggColumn, $resolvedStreams[$aggAlias] ?? null, $teamId);
+                }
+                $piece = "{$aggFunction}({$aggAlias}.{$aggColumn})";
+            }
+
+            if ($i === 0) {
+                $expression = $piece;
+                continue;
+            }
+
+            $operator = (string) ($term['operator'] ?? '+');
+            if (!in_array($operator, self::ALLOWED_TERM_OPERATORS, true)) {
+                throw new \InvalidArgumentException("Invalid term operator: {$operator}");
+            }
+
+            $expression .= " {$operator} {$piece}";
+        }
+
+        return "({$expression}) as kpi_result";
+    }
+
+    /**
+     * Normalize the aggregation portion of a KPI definition into a list
+     * of terms. Accepts both the new `aggregations` array shape and the
+     * legacy single `aggregation` object so older KPIs keep working.
+     */
+    private function extractAggregationTerms(array $definition): array
+    {
+        $terms = $definition['aggregations'] ?? null;
+
+        if (!is_array($terms) || empty($terms)) {
+            $single = $definition['aggregation'] ?? null;
+            if (is_array($single) && !empty($single)) {
+                return [$single];
+            }
+            return [];
+        }
+
+        return array_values($terms);
     }
 
     /**
