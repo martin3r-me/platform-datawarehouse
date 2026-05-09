@@ -12,6 +12,7 @@ use Platform\Core\PlatformCore;
 use Platform\Core\Routing\ModuleRouter;
 use Platform\Datawarehouse\Console\Commands\DispatchPullStreamsCommand;
 use Platform\Datawarehouse\Console\Commands\SeedDimDateCommand;
+use Platform\Datawarehouse\Console\Commands\SnapshotKpisCommand;
 use Platform\Datawarehouse\Providers\Bundesland\BundeslandProvider;
 use Platform\Datawarehouse\Providers\Feiertage\FeiertageProvider;
 use Platform\Datawarehouse\Providers\Land\LandProvider;
@@ -84,14 +85,22 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $this->commands([
                 DispatchPullStreamsCommand::class,
                 SeedDimDateCommand::class,
+                SnapshotKpisCommand::class,
             ]);
 
-            // Run the dispatcher every minute; it handles per-stream schedule gating.
             $this->app->booted(function () {
                 $schedule = $this->app->make(Schedule::class);
+
+                // Run the pull dispatcher every minute; it handles per-stream schedule gating.
                 $schedule->command('datawarehouse:dispatch-pulls')
                     ->everyMinute()
                     ->withoutOverlapping(5)
+                    ->runInBackground();
+
+                // Snapshot all active KPIs every minute for continuous time series.
+                $schedule->command('datawarehouse:snapshot-kpis')
+                    ->everyMinute()
+                    ->withoutOverlapping(10)
                     ->runInBackground();
             });
         }
