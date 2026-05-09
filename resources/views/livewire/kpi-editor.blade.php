@@ -205,16 +205,22 @@
                                     </div>
                                 </div>
 
-                                {{-- Column dropdown --}}
+                                {{-- Column dropdown (encodes alias:column to auto-bind stream_alias) --}}
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-500 mb-1">Spalte</label>
+                                    @php
+                                        // Build the current encoded value for the selected state
+                                        $encodedValue = $termColumn === '*' || $termColumn === ''
+                                            ? $termColumn
+                                            : $termAlias . ':' . $termColumn;
+                                    @endphp
                                     <select
-                                        wire:model.live="aggregations.{{ $aIndex }}.column"
+                                        wire:change="setAggregationColumn({{ $aIndex }}, $event.target.value)"
                                         class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
                                     >
                                         <option value="">— Spalte wählen —</option>
                                         @if($termFunc === 'COUNT')
-                                            <option value="*">* (alle Zeilen)</option>
+                                            <option value="*" {{ $termColumn === '*' ? 'selected' : '' }}>* (alle Zeilen)</option>
                                         @endif
                                         @foreach($this->availableColumns as $alias => $group)
                                             <optgroup label="{{ $group['stream_name'] }} ({{ $alias }})">
@@ -222,9 +228,10 @@
                                                     @php
                                                         $isNumeric = in_array($col->data_type, ['integer', 'decimal']);
                                                         $show = in_array($termFunc, ['COUNT', 'MIN', 'MAX']) || $isNumeric;
+                                                        $optValue = $alias . ':' . $col->column_name;
                                                     @endphp
                                                     @if($show)
-                                                        <option value="{{ $col->column_name }}">
+                                                        <option value="{{ $optValue }}" {{ $encodedValue === $optValue ? 'selected' : '' }}>
                                                             {{ $col->label ?? $col->column_name }}
                                                             ({{ $col->data_type }} · {{ $alias }})
                                                         </option>
@@ -234,24 +241,6 @@
                                         @endforeach
                                     </select>
                                 </div>
-
-                                {{-- Stream alias selector when multiple streams are joined --}}
-                                @if($termColumn && $termColumn !== '*' && count($selectedStreams) > 1)
-                                    <div>
-                                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Aus Datenstrom</label>
-                                        <select
-                                            wire:model.live="aggregations.{{ $aIndex }}.stream_alias"
-                                            class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
-                                        >
-                                            @foreach($this->availableColumns as $alias => $group)
-                                                @php $hasColumn = $group['columns']->contains('column_name', $termColumn); @endphp
-                                                @if($hasColumn)
-                                                    <option value="{{ $alias }}">{{ $group['stream_name'] }} ({{ $alias }})</option>
-                                                @endif
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                @endif
                             </div>
                         @endforeach
 

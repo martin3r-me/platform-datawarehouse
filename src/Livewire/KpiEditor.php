@@ -275,6 +275,33 @@ class KpiEditor extends Component
         $this->aggregations = array_values($this->aggregations);
     }
 
+    /**
+     * Set the column for an aggregation term. Accepts either a plain
+     * column name (backwards-compat) or the encoded "alias:column" form
+     * used by the updated UI to auto-bind the stream_alias.
+     */
+    public function setAggregationColumn(int $index, string $value): void
+    {
+        if (!isset($this->aggregations[$index])) {
+            return;
+        }
+
+        // Wildcard (*) has no alias prefix
+        if ($value === '*' || $value === '') {
+            $this->aggregations[$index]['column'] = $value;
+            return;
+        }
+
+        // Decode "alias:column" if present
+        if (str_contains($value, ':')) {
+            [$alias, $column] = explode(':', $value, 2);
+            $this->aggregations[$index]['stream_alias'] = $alias;
+            $this->aggregations[$index]['column'] = $column;
+        } else {
+            $this->aggregations[$index]['column'] = $value;
+        }
+    }
+
     public function setAggregationFunction(int $index, string $function): void
     {
         if (!isset($this->aggregations[$index])) {

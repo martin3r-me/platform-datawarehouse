@@ -3,6 +3,7 @@
 namespace Platform\Datawarehouse\Services;
 
 use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Models\DatawarehouseKpiSnapshot;
@@ -66,87 +67,14 @@ class KpiQueryBuilder
     public function execute(DatawarehouseKpi $kpi): ?float
     {
         $definition = $kpi->definition;
-        $teamId = $kpi->team_id;
 
-        $streams = $definition['streams'] ?? [];
-        $filters = $definition['filters'] ?? [];
-        $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
-
-        if (empty($streams) || empty($this->extractAggregationTerms($definition))) {
+        if (empty($definition['streams'] ?? []) || empty($this->extractAggregationTerms($definition))) {
             throw new \InvalidArgumentException('KPI definition incomplete: streams and aggregation required.');
         }
 
-        // Resolve and validate all streams
-        $resolvedStreams = $this->resolveStreams($streams, $teamId);
+        [$query, $resolvedStreams, $baseAlias] = $this->buildBaseQuery($kpi);
 
-        // Build the base query
-        $baseAlias = $streams[0]['alias'];
-        $baseStream = $resolvedStreams[$baseAlias];
-        $query = DB::table($baseStream->getDynamicTableName() . ' as ' . $baseAlias);
-
-        // Apply JOINs for chained streams
-        for ($i = 1; $i < count($streams); $i++) {
-            $streamDef = $streams[$i];
-            $alias = $streamDef['alias'];
-            $joinDef = $streamDef['join'] ?? null;
-
-            if (!$joinDef || !isset($joinDef['relation_id'])) {
-                throw new \InvalidArgumentException("Stream '{$alias}' missing join definition.");
-            }
-
-            $relation = DatawarehouseStreamRelation::where('id', $joinDef['relation_id'])
-                ->where('team_id', $teamId)
-                ->first();
-
-            if (!$relation) {
-                throw new \InvalidArgumentException("Relation {$joinDef['relation_id']} not found.");
-            }
-
-            $joinedStream = $resolvedStreams[$alias];
-            $joinTable = $joinedStream->getDynamicTableName() . ' as ' . $alias;
-            $joinType = strtoupper($joinDef['type'] ?? 'INNER');
-
-            // Determine join columns based on relation direction
-            if ($relation->source_stream_id === $joinedStream->id) {
-                // The joined stream is the source side
-                $leftColumn = $this->resolveJoinAlias($relation->target_stream_id, $streams) . '.' . $relation->target_column;
-                $rightColumn = $alias . '.' . $relation->source_column;
-            } else {
-                // The joined stream is the target side
-                $leftColumn = $this->resolveJoinAlias($relation->source_stream_id, $streams) . '.' . $relation->source_column;
-                $rightColumn = $alias . '.' . $relation->target_column;
-            }
-
-            if ($joinType === 'LEFT') {
-                $query->leftJoin($joinTable, $leftColumn, '=', $rightColumn);
-            } else {
-                $query->join($joinTable, $leftColumn, '=', $rightColumn);
-            }
-        }
-
-        // Apply calendar filters (JOIN on dw_dim_date)
-        $calendarFilters = $definition['calendar_filters'] ?? null;
-        if ($calendarFilters) {
-            $this->applyCalendarFilters($query, $calendarFilters);
-        }
-
-        // Apply snapshot filter for snapshot-strategy streams
-        if ($snapshotMode === 'latest') {
-            foreach ($resolvedStreams as $alias => $stream) {
-                if ($stream->isSnapshotStrategy()) {
-                    $tableName = $stream->getDynamicTableName();
-                    $subQuery = DB::table($tableName)->selectRaw('MAX(_snapshot_at)');
-                    $query->where($alias . '._snapshot_at', '=', $subQuery);
-                }
-            }
-        }
-
-        // Apply filters
-        foreach ($filters as $filter) {
-            $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
-        }
-
-        $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $teamId);
+        $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $kpi->team_id);
         $result = $query->selectRaw($selectRaw)->first();
 
         return $result ? (float) $result->kpi_result : null;
@@ -167,7 +95,7 @@ class KpiQueryBuilder
         }
 
         // Clone definition and remove date_range from calendar_filters
-        // so execute() won't apply it — we apply it ourselves
+        // so buildBaseQuery() won't apply it — we apply it ourselves.
         $originalDef = $kpi->definition;
         $modifiedDef = $originalDef;
         unset($modifiedDef['calendar_filters']['date_range']);
@@ -175,96 +103,18 @@ class KpiQueryBuilder
         $kpi->definition = $modifiedDef;
 
         try {
-            // Build the same query but inject our own date range
             $definition = $kpi->definition;
-            $teamId = $kpi->team_id;
-            $streams = $definition['streams'] ?? [];
-            $filters = $definition['filters'] ?? [];
-            $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
 
-            if (empty($streams) || empty($this->extractAggregationTerms($definition))) {
+            if (empty($definition['streams'] ?? []) || empty($this->extractAggregationTerms($definition))) {
                 throw new \InvalidArgumentException('KPI definition incomplete.');
             }
 
-            $resolvedStreams = $this->resolveStreams($streams, $teamId);
-
-            $baseAlias = $streams[0]['alias'];
-            $baseStream = $resolvedStreams[$baseAlias];
-            $query = DB::table($baseStream->getDynamicTableName() . ' as ' . $baseAlias);
-
-            for ($i = 1; $i < count($streams); $i++) {
-                $streamDef = $streams[$i];
-                $alias = $streamDef['alias'];
-                $joinDef = $streamDef['join'] ?? null;
-
-                if (!$joinDef || !isset($joinDef['relation_id'])) {
-                    throw new \InvalidArgumentException("Stream '{$alias}' missing join definition.");
-                }
-
-                $relation = DatawarehouseStreamRelation::where('id', $joinDef['relation_id'])
-                    ->where('team_id', $teamId)
-                    ->first();
-
-                if (!$relation) {
-                    throw new \InvalidArgumentException("Relation {$joinDef['relation_id']} not found.");
-                }
-
-                $joinedStream = $resolvedStreams[$alias];
-                $joinTable = $joinedStream->getDynamicTableName() . ' as ' . $alias;
-                $joinType = strtoupper($joinDef['type'] ?? 'INNER');
-
-                if ($relation->source_stream_id === $joinedStream->id) {
-                    $leftColumn = $this->resolveJoinAlias($relation->target_stream_id, $streams) . '.' . $relation->target_column;
-                    $rightColumn = $alias . '.' . $relation->source_column;
-                } else {
-                    $leftColumn = $this->resolveJoinAlias($relation->source_stream_id, $streams) . '.' . $relation->source_column;
-                    $rightColumn = $alias . '.' . $relation->target_column;
-                }
-
-                if ($joinType === 'LEFT') {
-                    $query->leftJoin($joinTable, $leftColumn, '=', $rightColumn);
-                } else {
-                    $query->join($joinTable, $leftColumn, '=', $rightColumn);
-                }
-            }
-
-            // Apply calendar conditions (but NOT date_range — we override it)
-            $calendarFilters = $definition['calendar_filters'] ?? null;
-            if ($calendarFilters) {
-                $this->applyCalendarFilters($query, $calendarFilters);
-            }
+            [$query, $resolvedStreams, $baseAlias] = $this->buildBaseQuery($kpi);
 
             // Apply our explicit date range
-            $cal = $definition['calendar_filters'] ?? [];
-            $dateColumn = $cal['date_column'] ?? null;
-            $dateAlias = $cal['date_stream_alias'] ?? 's0';
+            $this->applyExplicitDateRange($query, $definition, $dates[0], $dates[1]);
 
-            if ($dateColumn) {
-                $this->validateColumnName($dateColumn);
-                $this->validateAlias($dateAlias);
-                [$start, $end] = $dates;
-                $query->whereBetween(
-                    DB::raw("DATE({$dateAlias}.{$dateColumn})"),
-                    [$start->toDateString(), $end->toDateString()]
-                );
-            }
-
-            // Snapshot filter
-            if ($snapshotMode === 'latest') {
-                foreach ($resolvedStreams as $alias => $stream) {
-                    if ($stream->isSnapshotStrategy()) {
-                        $tableName = $stream->getDynamicTableName();
-                        $subQuery = DB::table($tableName)->selectRaw('MAX(_snapshot_at)');
-                        $query->where($alias . '._snapshot_at', '=', $subQuery);
-                    }
-                }
-            }
-
-            foreach ($filters as $filter) {
-                $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
-            }
-
-            $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $teamId);
+            $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $kpi->team_id);
             $result = $query->selectRaw($selectRaw)->first();
 
             return $result ? (float) $result->kpi_result : null;
@@ -290,7 +140,6 @@ class KpiQueryBuilder
             $comparison = null;
 
             if ($comparisonDates) {
-                // Build a temporary range key to pass through executeForRange
                 $comparison = $this->executeForDatePair($kpi, $comparisonDates[0], $comparisonDates[1]);
             }
 
@@ -411,20 +260,26 @@ class KpiQueryBuilder
         };
     }
 
+    // ----------------------------------------------------------------
+    // Internal: shared query construction
+    // ----------------------------------------------------------------
+
     /**
-     * Execute a KPI query for an explicit [start, end] date pair.
+     * Build the base query with JOINs, calendar filters, snapshot filters,
+     * and data filters applied. Returns [Builder, resolvedStreams, baseAlias].
+     *
+     * Used by execute(), executeForRange(), and executeForDatePair() to
+     * avoid duplicating the query-setup logic.
      */
-    private function executeForDatePair(DatawarehouseKpi $kpi, Carbon $start, Carbon $end): ?float
-    {
+    private function buildBaseQuery(
+        DatawarehouseKpi $kpi,
+        bool $strict = true
+    ): array {
         $definition = $kpi->definition;
         $teamId = $kpi->team_id;
         $streams = $definition['streams'] ?? [];
         $filters = $definition['filters'] ?? [];
         $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
-
-        if (empty($streams) || empty($this->extractAggregationTerms($definition))) {
-            return null;
-        }
 
         $resolvedStreams = $this->resolveStreams($streams, $teamId);
 
@@ -432,12 +287,16 @@ class KpiQueryBuilder
         $baseStream = $resolvedStreams[$baseAlias];
         $query = DB::table($baseStream->getDynamicTableName() . ' as ' . $baseAlias);
 
+        // Apply JOINs for chained streams
         for ($i = 1; $i < count($streams); $i++) {
             $streamDef = $streams[$i];
             $alias = $streamDef['alias'];
             $joinDef = $streamDef['join'] ?? null;
 
             if (!$joinDef || !isset($joinDef['relation_id'])) {
+                if ($strict) {
+                    throw new \InvalidArgumentException("Stream '{$alias}' missing join definition.");
+                }
                 continue;
             }
 
@@ -446,6 +305,9 @@ class KpiQueryBuilder
                 ->first();
 
             if (!$relation) {
+                if ($strict) {
+                    throw new \InvalidArgumentException("Relation {$joinDef['relation_id']} not found.");
+                }
                 continue;
             }
 
@@ -453,6 +315,7 @@ class KpiQueryBuilder
             $joinTable = $joinedStream->getDynamicTableName() . ' as ' . $alias;
             $joinType = strtoupper($joinDef['type'] ?? 'INNER');
 
+            // Determine join columns based on relation direction
             if ($relation->source_stream_id === $joinedStream->id) {
                 $leftColumn = $this->resolveJoinAlias($relation->target_stream_id, $streams) . '.' . $relation->target_column;
                 $rightColumn = $alias . '.' . $relation->source_column;
@@ -468,29 +331,13 @@ class KpiQueryBuilder
             }
         }
 
-        // Apply calendar conditions only (no date_range)
+        // Apply calendar filters (JOIN on dw_dim_date)
         $calendarFilters = $definition['calendar_filters'] ?? null;
         if ($calendarFilters) {
-            $condOnly = $calendarFilters;
-            unset($condOnly['date_range']);
-            $this->applyCalendarFilters($query, $condOnly);
+            $this->applyCalendarFilters($query, $calendarFilters);
         }
 
-        // Apply explicit date range
-        $cal = $definition['calendar_filters'] ?? [];
-        $dateColumn = $cal['date_column'] ?? null;
-        $dateAlias = $cal['date_stream_alias'] ?? 's0';
-
-        if ($dateColumn) {
-            $this->validateColumnName($dateColumn);
-            $this->validateAlias($dateAlias);
-            $query->whereBetween(
-                DB::raw("DATE({$dateAlias}.{$dateColumn})"),
-                [$start->toDateString(), $end->toDateString()]
-            );
-        }
-
-        // Snapshot filter
+        // Apply snapshot filter for snapshot-strategy streams
         if ($snapshotMode === 'latest') {
             foreach ($resolvedStreams as $alias => $stream) {
                 if ($stream->isSnapshotStrategy()) {
@@ -501,26 +348,84 @@ class KpiQueryBuilder
             }
         }
 
+        // Apply filters
         foreach ($filters as $filter) {
             $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
         }
 
-        try {
-            $selectRaw = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $teamId, strict: false);
-        } catch (\InvalidArgumentException) {
+        return [$query, $resolvedStreams, $baseAlias];
+    }
+
+    /**
+     * Execute a KPI query for an explicit [start, end] date pair.
+     */
+    private function executeForDatePair(DatawarehouseKpi $kpi, Carbon $start, Carbon $end): ?float
+    {
+        $definition = $kpi->definition;
+
+        if (empty($definition['streams'] ?? []) || empty($this->extractAggregationTerms($definition))) {
             return null;
         }
 
-        $result = $query->selectRaw($selectRaw)->first();
+        // Strip date_range so buildBaseQuery doesn't apply it — we use our own pair.
+        $originalDef = $kpi->definition;
+        $modifiedDef = $originalDef;
+        unset($modifiedDef['calendar_filters']['date_range']);
+        $kpi->definition = $modifiedDef;
 
-        return $result ? (float) $result->kpi_result : null;
+        try {
+            [$query, $resolvedStreams, $baseAlias] = $this->buildBaseQuery($kpi, strict: false);
+
+            // Apply explicit date range
+            $this->applyExplicitDateRange($query, $modifiedDef, $start, $end);
+
+            try {
+                $selectRaw = $this->buildAggregationSelect($modifiedDef, $resolvedStreams, $baseAlias, $kpi->team_id, strict: false);
+            } catch (\InvalidArgumentException) {
+                return null;
+            }
+
+            $result = $query->selectRaw($selectRaw)->first();
+
+            return $result ? (float) $result->kpi_result : null;
+        } finally {
+            $kpi->definition = $originalDef;
+        }
     }
+
+    /**
+     * Apply an explicit date range filter using the calendar_filters config.
+     */
+    private function applyExplicitDateRange(Builder $query, array $definition, Carbon $start, Carbon $end): void
+    {
+        $cal = $definition['calendar_filters'] ?? [];
+        $dateColumn = $cal['date_column'] ?? null;
+        $dateAlias = $cal['date_stream_alias'] ?? 's0';
+
+        if (!$dateColumn) {
+            return;
+        }
+
+        $this->validateColumnName($dateColumn);
+        $this->validateAlias($dateAlias);
+        $query->whereBetween(
+            DB::raw("DATE({$dateAlias}.{$dateColumn})"),
+            [$start->toDateString(), $end->toDateString()]
+        );
+    }
+
+    // ----------------------------------------------------------------
+    // Internal: aggregation SELECT builder
+    // ----------------------------------------------------------------
 
     /**
      * Build the SELECT clause that aggregates one or more terms into a
      * single kpi_result. Supports the new `aggregations` shape (an ordered
      * list of {function, column, stream_alias, operator}) and falls back
      * to the legacy single `aggregation` shape.
+     *
+     * Division terms are wrapped with NULLIF(..., 0) to prevent
+     * division-by-zero errors.
      *
      * Set $strict=false to skip the DB-backed column-existence check
      * (used in the per-range executors where the same KPI is run many
@@ -572,6 +477,12 @@ class KpiQueryBuilder
                 throw new \InvalidArgumentException("Invalid term operator: {$operator}");
             }
 
+            // Wrap divisor with NULLIF to prevent division-by-zero errors.
+            // MySQL returns NULL instead of throwing an error.
+            if ($operator === '/') {
+                $piece = "NULLIF({$piece}, 0)";
+            }
+
             $expression .= " {$operator} {$piece}";
         }
 
@@ -597,6 +508,10 @@ class KpiQueryBuilder
 
         return array_values($terms);
     }
+
+    // ----------------------------------------------------------------
+    // Internal: filters & validation
+    // ----------------------------------------------------------------
 
     /**
      * Apply a date range filter on a date column.
