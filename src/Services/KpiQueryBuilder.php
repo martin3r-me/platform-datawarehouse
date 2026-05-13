@@ -348,6 +348,15 @@ class KpiQueryBuilder
             }
         }
 
+        // Apply currency filter for SCD2-strategy streams: only count rows
+        // that represent the entity's *current* version. Closed historical
+        // versions stay queryable for point-in-time analysis elsewhere.
+        foreach ($resolvedStreams as $alias => $stream) {
+            if ($stream->isScd2Strategy()) {
+                $query->where($alias . '._is_current', true);
+            }
+        }
+
         // Apply filters
         foreach ($filters as $filter) {
             $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
