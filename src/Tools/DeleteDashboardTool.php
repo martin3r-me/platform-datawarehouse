@@ -17,7 +17,7 @@ class DeleteDashboardTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboards.DELETE';
+        return 'datawarehouse.dashboards.DELETE';
     }
 
     public function getDescription(): string

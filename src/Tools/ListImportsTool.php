@@ -18,12 +18,12 @@ class ListImportsTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.imports.GET';
+        return 'datawarehouse.imports.GET';
     }
 
     public function getDescription(): string
     {
-        return 'GET /datawarehouse/imports - Listet Import-Läufe (read-only) für einen Stream oder das ganze Team. Optional: stream_id, status (pending/processing/success/partial/error), filters/search/sort/limit/offset. Default-Sortierung: neueste zuerst. Achtung: rohes payload-Feld wird aus Bandbreitengründen NICHT mit zurückgegeben (Einzelimport via "dwh.import.GET").';
+        return 'GET /datawarehouse/imports - Listet Import-Läufe (read-only) für einen Stream oder das ganze Team. Optional: stream_id, status (pending/processing/success/partial/error), filters/search/sort/limit/offset. Default-Sortierung: neueste zuerst. Achtung: rohes payload-Feld wird aus Bandbreitengründen NICHT mit zurückgegeben (Einzelimport via "datawarehouse.import.GET").';
     }
 
     public function getSchema(): array

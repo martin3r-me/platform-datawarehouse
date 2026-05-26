@@ -17,12 +17,12 @@ class CreateDashboardTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboards.POST';
+        return 'datawarehouse.dashboards.POST';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/dashboards - Erstellt ein neues, leeres Dashboard. ERFORDERLICH: name. Optional: description, icon, position. KPIs werden nachträglich über "dwh.dashboards.attachKpi" verknüpft.';
+        return 'POST /datawarehouse/dashboards - Erstellt ein neues, leeres Dashboard. ERFORDERLICH: name. Optional: description, icon, position. KPIs werden nachträglich über "datawarehouse.dashboards.attachKpi" verknüpft.';
     }
 
     public function getSchema(): array
@@ -72,7 +72,7 @@ class CreateDashboardTool implements ToolContract, ToolMetadataContract
                 'name'        => $dashboard->name,
                 'description' => $dashboard->description,
                 'team_id'     => $dashboard->team_id,
-                'message'     => 'Dashboard erstellt. Verknüpfe KPIs über "dwh.dashboards.attachKpi".',
+                'message'     => 'Dashboard erstellt. Verknüpfe KPIs über "datawarehouse.dashboards.attachKpi".',
             ]);
         } catch (\Throwable $e) {
             return ToolResult::error('EXECUTION_ERROR', 'Fehler beim Erstellen des Dashboards: ' . $e->getMessage());

@@ -17,7 +17,7 @@ class GetConnectionTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.connection.GET';
+        return 'datawarehouse.connection.GET';
     }
 
     public function getDescription(): string

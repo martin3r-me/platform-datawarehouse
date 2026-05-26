@@ -17,7 +17,7 @@ class GetDashboardTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboard.GET';
+        return 'datawarehouse.dashboard.GET';
     }
 
     public function getDescription(): string

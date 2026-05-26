@@ -18,7 +18,7 @@ class UpdateStreamColumnTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.stream_columns.PUT';
+        return 'datawarehouse.stream_columns.PUT';
     }
 
     public function getDescription(): string

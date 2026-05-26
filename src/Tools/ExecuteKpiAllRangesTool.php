@@ -18,7 +18,7 @@ class ExecuteKpiAllRangesTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpis.executeAllRanges';
+        return 'datawarehouse.kpis.executeAllRanges';
     }
 
     public function getDescription(): string

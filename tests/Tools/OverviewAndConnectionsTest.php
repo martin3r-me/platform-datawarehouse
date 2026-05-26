@@ -41,8 +41,8 @@ class OverviewAndConnectionsTest extends TestCase
         $this->assertArrayHasKey('streams', $data['concepts']);
         $this->assertArrayHasKey('kpis', $data['concepts']);
         $this->assertArrayHasKey('dashboards', $data['concepts']);
-        $this->assertSame('dwh.streams.GET', $data['related_tools']['streams']['list']);
-        $this->assertSame('dwh.kpis.executeAllRanges', $data['related_tools']['kpis']['executeAllRanges']);
+        $this->assertSame('datawarehouse.streams.GET', $data['related_tools']['streams']['list']);
+        $this->assertSame('datawarehouse.kpis.executeAllRanges', $data['related_tools']['kpis']['executeAllRanges']);
     }
 
     public function test_list_providers_filters_system_by_default(): void

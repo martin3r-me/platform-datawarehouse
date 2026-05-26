@@ -17,7 +17,7 @@ class DetachKpiFromDashboardTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboards.detachKpi';
+        return 'datawarehouse.dashboards.detachKpi';
     }
 
     public function getDescription(): string

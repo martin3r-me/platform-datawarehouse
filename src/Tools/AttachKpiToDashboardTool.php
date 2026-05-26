@@ -18,7 +18,7 @@ class AttachKpiToDashboardTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboards.attachKpi';
+        return 'datawarehouse.dashboards.attachKpi';
     }
 
     public function getDescription(): string

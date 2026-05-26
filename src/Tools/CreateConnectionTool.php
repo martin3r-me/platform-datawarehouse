@@ -18,12 +18,12 @@ class CreateConnectionTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.connections.POST';
+        return 'datawarehouse.connections.POST';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/connections - Legt eine neue Connection zu einem Provider an. ERFORDERLICH: provider_key (nutze "dwh.providers.GET" für gültige Keys), name, credentials (Objekt mit allen Pflicht-Auth-Feldern des Providers — Schema via "dwh.provider.GET"). Optional: description, meta, is_active. Credentials werden verschlüsselt gespeichert und in keiner Antwort zurückgegeben.';
+        return 'POST /datawarehouse/connections - Legt eine neue Connection zu einem Provider an. ERFORDERLICH: provider_key (nutze "datawarehouse.providers.GET" für gültige Keys), name, credentials (Objekt mit allen Pflicht-Auth-Feldern des Providers — Schema via "datawarehouse.provider.GET"). Optional: description, meta, is_active. Credentials werden verschlüsselt gespeichert und in keiner Antwort zurückgegeben.';
     }
 
     public function getSchema(): array
@@ -36,7 +36,7 @@ class CreateConnectionTool implements ToolContract, ToolMetadataContract
                 ],
                 'provider_key' => [
                     'type' => 'string',
-                    'description' => 'Provider-Key (ERFORDERLICH), z.B. "lexoffice". Liste via "dwh.providers.GET".',
+                    'description' => 'Provider-Key (ERFORDERLICH), z.B. "lexoffice". Liste via "datawarehouse.providers.GET".',
                 ],
                 'name' => [
                     'type' => 'string',
@@ -93,7 +93,7 @@ class CreateConnectionTool implements ToolContract, ToolMetadataContract
 
             $registry = app(ProviderRegistry::class);
             if (!$registry->has($providerKey)) {
-                return ToolResult::error('VALIDATION_ERROR', 'Unbekannter provider_key "'.$providerKey.'". Nutze "dwh.providers.GET" für die Liste.');
+                return ToolResult::error('VALIDATION_ERROR', 'Unbekannter provider_key "'.$providerKey.'". Nutze "datawarehouse.providers.GET" für die Liste.');
             }
 
             $provider = $registry->get($providerKey);
@@ -130,7 +130,7 @@ class CreateConnectionTool implements ToolContract, ToolMetadataContract
                 'name'         => $connection->name,
                 'is_active'    => (bool)$connection->is_active,
                 'team_id'      => $connection->team_id,
-                'message'      => 'Connection erstellt. Nutze "dwh.connections.test" um die Credentials zu prüfen.',
+                'message'      => 'Connection erstellt. Nutze "datawarehouse.connections.test" um die Credentials zu prüfen.',
             ]);
         } catch (\Throwable $e) {
             return ToolResult::error('EXECUTION_ERROR', 'Fehler beim Erstellen der Connection: ' . $e->getMessage());

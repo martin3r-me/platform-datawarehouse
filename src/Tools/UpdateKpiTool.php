@@ -18,12 +18,12 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpis.PUT';
+        return 'datawarehouse.kpis.PUT';
     }
 
     public function getDescription(): string
     {
-        return 'PUT /datawarehouse/kpis/{id} - Aktualisiert einen KPI. ERFORDERLICH: kpi_id. Wenn definition mitgesendet wird, läuft sie durch dieselben Whitelists wie beim Create. Eine neue definition setzt den Cache zurück (cached_value=null, cached_at=null) — der nächste "dwh.kpis.execute" oder Scheduler-Lauf berechnet neu.';
+        return 'PUT /datawarehouse/kpis/{id} - Aktualisiert einen KPI. ERFORDERLICH: kpi_id. Wenn definition mitgesendet wird, läuft sie durch dieselben Whitelists wie beim Create. Eine neue definition setzt den Cache zurück (cached_value=null, cached_at=null) — der nächste "datawarehouse.kpis.execute" oder Scheduler-Lauf berechnet neu.';
     }
 
     public function getSchema(): array
@@ -121,7 +121,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'team_id'            => $kpi->team_id,
                 'definition_changed' => $definitionChanged,
                 'message'            => $definitionChanged
-                    ? 'KPI aktualisiert. Cache wurde geleert — nutze "dwh.kpis.execute" zum Neuberechnen.'
+                    ? 'KPI aktualisiert. Cache wurde geleert — nutze "datawarehouse.kpis.execute" zum Neuberechnen.'
                     : 'KPI aktualisiert.',
             ]);
         } catch (\Throwable $e) {

@@ -13,7 +13,7 @@ class ListProvidersTool implements ToolContract, ToolMetadataContract
 {
     public function getName(): string
     {
-        return 'dwh.providers.GET';
+        return 'datawarehouse.providers.GET';
     }
 
     public function getDescription(): string

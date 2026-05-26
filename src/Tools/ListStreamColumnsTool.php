@@ -18,7 +18,7 @@ class ListStreamColumnsTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.stream_columns.GET';
+        return 'datawarehouse.stream_columns.GET';
     }
 
     public function getDescription(): string
@@ -38,7 +38,7 @@ class ListStreamColumnsTool implements ToolContract, ToolMetadataContract
                     ],
                     'stream_id' => [
                         'type' => 'integer',
-                        'description' => 'ID des Streams (ERFORDERLICH). Nutze "dwh.streams.GET".',
+                        'description' => 'ID des Streams (ERFORDERLICH). Nutze "datawarehouse.streams.GET".',
                     ],
                     'is_active' => [
                         'type' => 'boolean',

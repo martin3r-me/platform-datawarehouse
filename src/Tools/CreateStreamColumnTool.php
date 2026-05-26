@@ -20,12 +20,12 @@ class CreateStreamColumnTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.stream_columns.POST';
+        return 'datawarehouse.stream_columns.POST';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/stream-columns - Legt eine neue Spalten-Definition für einen Stream an. ERFORDERLICH: stream_id, source_key, data_type. Optional: column_name (default: aus source_key sanitiert), label, precision/scale (bei data_type=decimal), is_indexed, is_nullable, default_value, transform, position. Wenn der Stream bereits einen Table hat (table_created=true), wird die Spalte zusätzlich per ALTER TABLE hinzugefügt. Für Massen-Definition vor Aktivierung: "dwh.stream_columns.BULK_POST".';
+        return 'POST /datawarehouse/stream-columns - Legt eine neue Spalten-Definition für einen Stream an. ERFORDERLICH: stream_id, source_key, data_type. Optional: column_name (default: aus source_key sanitiert), label, precision/scale (bei data_type=decimal), is_indexed, is_nullable, default_value, transform, position. Wenn der Stream bereits einen Table hat (table_created=true), wird die Spalte zusätzlich per ALTER TABLE hinzugefügt. Für Massen-Definition vor Aktivierung: "datawarehouse.stream_columns.BULK_POST".';
     }
 
     public function getSchema(): array

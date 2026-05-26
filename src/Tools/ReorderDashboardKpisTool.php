@@ -18,7 +18,7 @@ class ReorderDashboardKpisTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboards.reorder';
+        return 'datawarehouse.dashboards.reorder';
     }
 
     public function getDescription(): string

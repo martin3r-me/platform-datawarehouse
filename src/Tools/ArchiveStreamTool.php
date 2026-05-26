@@ -17,7 +17,7 @@ class ArchiveStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.archive';
+        return 'datawarehouse.streams.archive';
     }
 
     public function getDescription(): string

@@ -13,7 +13,7 @@ class GetProviderTool implements ToolContract, ToolMetadataContract
 {
     public function getName(): string
     {
-        return 'dwh.provider.GET';
+        return 'datawarehouse.provider.GET';
     }
 
     public function getDescription(): string

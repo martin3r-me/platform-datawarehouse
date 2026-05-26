@@ -17,12 +17,12 @@ class UpdateStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.PUT';
+        return 'datawarehouse.streams.PUT';
     }
 
     public function getDescription(): string
     {
-        return 'PUT /datawarehouse/streams/{id} - Aktualisiert einen Stream. ERFORDERLICH: stream_id. Für Statuswechsel (onboarding→active, pause/resume/archive) gibt es eigene Tools (dwh.streams.activate/pause/resume/archive). System-Streams (is_system=true) können nicht geändert werden. sync_strategy kann nur geändert werden solange table_created=false ist.';
+        return 'PUT /datawarehouse/streams/{id} - Aktualisiert einen Stream. ERFORDERLICH: stream_id. Für Statuswechsel (onboarding→active, pause/resume/archive) gibt es eigene Tools (datawarehouse.streams.activate/pause/resume/archive). System-Streams (is_system=true) können nicht geändert werden. sync_strategy kann nur geändert werden solange table_created=false ist.';
     }
 
     public function getSchema(): array
@@ -35,7 +35,7 @@ class UpdateStreamTool implements ToolContract, ToolMetadataContract
                 ],
                 'stream_id' => [
                     'type' => 'integer',
-                    'description' => 'ID des Streams (ERFORDERLICH). Nutze "dwh.streams.GET".',
+                    'description' => 'ID des Streams (ERFORDERLICH). Nutze "datawarehouse.streams.GET".',
                 ],
                 'name' => [
                     'type' => 'string',

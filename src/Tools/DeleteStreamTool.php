@@ -17,7 +17,7 @@ class DeleteStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.DELETE';
+        return 'datawarehouse.streams.DELETE';
     }
 
     public function getDescription(): string

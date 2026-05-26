@@ -18,12 +18,12 @@ class CreateStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.POST';
+        return 'datawarehouse.streams.POST';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/streams - Erstellt einen neuen Stream im Status "onboarding". ERFORDERLICH: name, source_type (webhook_post/pull_get/manual). Bei pull_get zusätzlich: connection_id, endpoint_key. Optional: description, slug, sync_strategy (append/current/snapshot/scd2), natural_key, pull_schedule, pull_mode, incremental_field. Nach Anlage: Spalten via "dwh.stream_columns.BULK_POST" definieren, dann "dwh.streams.activate" aufrufen.';
+        return 'POST /datawarehouse/streams - Erstellt einen neuen Stream im Status "onboarding". ERFORDERLICH: name, source_type (webhook_post/pull_get/manual). Bei pull_get zusätzlich: connection_id, endpoint_key. Optional: description, slug, sync_strategy (append/current/snapshot/scd2), natural_key, pull_schedule, pull_mode, incremental_field. Nach Anlage: Spalten via "datawarehouse.stream_columns.BULK_POST" definieren, dann "datawarehouse.streams.activate" aufrufen.';
     }
 
     public function getSchema(): array
@@ -53,11 +53,11 @@ class CreateStreamTool implements ToolContract, ToolMetadataContract
                 ],
                 'connection_id' => [
                     'type' => 'integer',
-                    'description' => 'Bei source_type=pull_get ERFORDERLICH: Connection zum Provider. Nutze "dwh.connections.GET".',
+                    'description' => 'Bei source_type=pull_get ERFORDERLICH: Connection zum Provider. Nutze "datawarehouse.connections.GET".',
                 ],
                 'endpoint_key' => [
                     'type' => 'string',
-                    'description' => 'Bei source_type=pull_get ERFORDERLICH: Endpoint-Key des Providers (z.B. "contacts" bei Lexoffice). Nutze "dwh.provider.GET" um verfügbare Endpoints zu sehen.',
+                    'description' => 'Bei source_type=pull_get ERFORDERLICH: Endpoint-Key des Providers (z.B. "contacts" bei Lexoffice). Nutze "datawarehouse.provider.GET" um verfügbare Endpoints zu sehen.',
                 ],
                 'sync_strategy' => [
                     'type' => 'string',
@@ -197,7 +197,7 @@ class CreateStreamTool implements ToolContract, ToolMetadataContract
                 'status'        => $stream->status,
                 'table_name'    => $stream->getDynamicTableName(),
                 'team_id'       => $stream->team_id,
-                'message'       => 'Stream im Status "onboarding" erstellt. Definiere jetzt die Spalten über "dwh.stream_columns.BULK_POST" und aktiviere den Stream anschließend mit "dwh.streams.activate".',
+                'message'       => 'Stream im Status "onboarding" erstellt. Definiere jetzt die Spalten über "datawarehouse.stream_columns.BULK_POST" und aktiviere den Stream anschließend mit "datawarehouse.streams.activate".',
             ]);
         } catch (\Throwable $e) {
             return ToolResult::error('EXECUTION_ERROR', 'Fehler beim Erstellen des Streams: ' . $e->getMessage());

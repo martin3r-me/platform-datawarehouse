@@ -17,7 +17,7 @@ class ListStreamsTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.GET';
+        return 'datawarehouse.streams.GET';
     }
 
     public function getDescription(): string

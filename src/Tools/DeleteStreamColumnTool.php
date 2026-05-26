@@ -18,7 +18,7 @@ class DeleteStreamColumnTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.stream_columns.DELETE';
+        return 'datawarehouse.stream_columns.DELETE';
     }
 
     public function getDescription(): string

@@ -17,7 +17,7 @@ class ResumeStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.resume';
+        return 'datawarehouse.streams.resume';
     }
 
     public function getDescription(): string

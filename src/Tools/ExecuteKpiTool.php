@@ -18,7 +18,7 @@ class ExecuteKpiTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpis.execute';
+        return 'datawarehouse.kpis.execute';
     }
 
     public function getDescription(): string

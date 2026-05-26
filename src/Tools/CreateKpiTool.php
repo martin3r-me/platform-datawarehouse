@@ -18,12 +18,12 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpis.POST';
+        return 'datawarehouse.kpis.POST';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/kpis - Legt einen neuen KPI an. ERFORDERLICH: name, definition (validiert gegen die gleichen Whitelists wie der KpiQueryBuilder — eigene SQL-Fragmente sind nicht möglich). definition muss enthalten: streams[{stream_id, alias: "s0"|...}], aggregations[{function: SUM|COUNT|AVG|MIN|MAX, column, stream_alias, operator?}]. Optional: filters[], calendar_filters{}, snapshot_mode. Siehe "dwh.overview.GET" für die volle Struktur.';
+        return 'POST /datawarehouse/kpis - Legt einen neuen KPI an. ERFORDERLICH: name, definition (validiert gegen die gleichen Whitelists wie der KpiQueryBuilder — eigene SQL-Fragmente sind nicht möglich). definition muss enthalten: streams[{stream_id, alias: "s0"|...}], aggregations[{function: SUM|COUNT|AVG|MIN|MAX, column, stream_alias, operator?}]. Optional: filters[], calendar_filters{}, snapshot_mode. Siehe "datawarehouse.overview.GET" für die volle Struktur.';
     }
 
     public function getSchema(): array
@@ -110,7 +110,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'display_range' => $kpi->display_range,
                 'status'        => $kpi->status,
                 'team_id'       => $kpi->team_id,
-                'message'       => 'KPI angelegt. Nutze "dwh.kpis.execute" um den aktuellen Wert zu berechnen.',
+                'message'       => 'KPI angelegt. Nutze "datawarehouse.kpis.execute" um den aktuellen Wert zu berechnen.',
             ]);
         } catch (\Throwable $e) {
             return ToolResult::error('EXECUTION_ERROR', 'Fehler beim Erstellen des KPI: ' . $e->getMessage());

@@ -17,7 +17,7 @@ class DeleteKpiTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpis.DELETE';
+        return 'datawarehouse.kpis.DELETE';
     }
 
     public function getDescription(): string

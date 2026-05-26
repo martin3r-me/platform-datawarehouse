@@ -18,7 +18,7 @@ class ActivateStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.activate';
+        return 'datawarehouse.streams.activate';
     }
 
     public function getDescription(): string
@@ -80,7 +80,7 @@ class ActivateStreamTool implements ToolContract, ToolMetadataContract
 
             $columnCount = $stream->columns()->count();
             if ($columnCount === 0) {
-                return ToolResult::error('VALIDATION_ERROR', 'Stream hat keine Spalten. Lege zuerst Spalten über "dwh.stream_columns.BULK_POST" oder "dwh.stream_columns.POST" an.');
+                return ToolResult::error('VALIDATION_ERROR', 'Stream hat keine Spalten. Lege zuerst Spalten über "datawarehouse.stream_columns.BULK_POST" oder "datawarehouse.stream_columns.POST" an.');
             }
 
             if (in_array($stream->sync_strategy, ['current', 'scd2'], true) && empty($stream->natural_key)) {

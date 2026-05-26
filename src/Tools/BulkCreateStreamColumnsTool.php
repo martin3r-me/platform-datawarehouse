@@ -20,12 +20,12 @@ class BulkCreateStreamColumnsTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.stream_columns.BULK_POST';
+        return 'datawarehouse.stream_columns.BULK_POST';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/stream-columns/bulk - Erstellt mehrere Spalten-Definitionen für einen Stream in einem Aufruf. Gedacht für den Onboarding-Flow nach "dwh.streams.POST". ERFORDERLICH: stream_id, items (Array). Jedes Item benötigt source_key + data_type. Maximal 50 Items pro Aufruf. Wenn der Stream bereits einen Table hat (table_created=true), wird jede neue Spalte zusätzlich per ALTER TABLE hinzugefügt — fehlerhafte Items werden im "errors"-Array zurückgegeben, erfolgreiche bleiben bestehen.';
+        return 'POST /datawarehouse/stream-columns/bulk - Erstellt mehrere Spalten-Definitionen für einen Stream in einem Aufruf. Gedacht für den Onboarding-Flow nach "datawarehouse.streams.POST". ERFORDERLICH: stream_id, items (Array). Jedes Item benötigt source_key + data_type. Maximal 50 Items pro Aufruf. Wenn der Stream bereits einen Table hat (table_created=true), wird jede neue Spalte zusätzlich per ALTER TABLE hinzugefügt — fehlerhafte Items werden im "errors"-Array zurückgegeben, erfolgreiche bleiben bestehen.';
     }
 
     public function getSchema(): array

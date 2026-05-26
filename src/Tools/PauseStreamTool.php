@@ -17,12 +17,12 @@ class PauseStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.streams.pause';
+        return 'datawarehouse.streams.pause';
     }
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/streams/{id}/pause - Setzt einen aktiven Stream auf "paused" — Pull-Schedules feuern dann nicht mehr, Webhook-Ingest wird abgelehnt. ERFORDERLICH: stream_id. Nutze "dwh.streams.resume" um wieder zu aktivieren.';
+        return 'POST /datawarehouse/streams/{id}/pause - Setzt einen aktiven Stream auf "paused" — Pull-Schedules feuern dann nicht mehr, Webhook-Ingest wird abgelehnt. ERFORDERLICH: stream_id. Nutze "datawarehouse.streams.resume" um wieder zu aktivieren.';
     }
 
     public function getSchema(): array

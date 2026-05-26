@@ -17,7 +17,7 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpis.GET';
+        return 'datawarehouse.kpis.GET';
     }
 
     public function getDescription(): string

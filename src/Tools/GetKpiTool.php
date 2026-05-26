@@ -17,7 +17,7 @@ class GetKpiTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.kpi.GET';
+        return 'datawarehouse.kpi.GET';
     }
 
     public function getDescription(): string

@@ -18,7 +18,7 @@ class TestConnectionTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.connections.test';
+        return 'datawarehouse.connections.test';
     }
 
     public function getDescription(): string

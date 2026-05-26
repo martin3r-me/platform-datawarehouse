@@ -17,7 +17,7 @@ class ListConnectionsTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.connections.GET';
+        return 'datawarehouse.connections.GET';
     }
 
     public function getDescription(): string
@@ -37,7 +37,7 @@ class ListConnectionsTool implements ToolContract, ToolMetadataContract
                     ],
                     'provider_key' => [
                         'type' => 'string',
-                        'description' => 'Optional: Filter nach Provider (z.B. "lexoffice"). Nutze "dwh.providers.GET" für die Liste.',
+                        'description' => 'Optional: Filter nach Provider (z.B. "lexoffice"). Nutze "datawarehouse.providers.GET" für die Liste.',
                     ],
                     'is_active' => [
                         'type' => 'boolean',

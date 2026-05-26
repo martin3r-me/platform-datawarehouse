@@ -17,7 +17,7 @@ class UpdateConnectionTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.connections.PUT';
+        return 'datawarehouse.connections.PUT';
     }
 
     public function getDescription(): string

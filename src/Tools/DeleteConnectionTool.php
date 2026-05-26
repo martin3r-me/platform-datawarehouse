@@ -17,12 +17,12 @@ class DeleteConnectionTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.connections.DELETE';
+        return 'datawarehouse.connections.DELETE';
     }
 
     public function getDescription(): string
     {
-        return 'DELETE /datawarehouse/connections/{id} - Soft-deletet eine Connection. Streams, die diese Connection nutzen, schlagen anschließend beim Pull fehl — vorher den Stream-Referenzcheck via "dwh.connection.GET" (streams_count) durchführen.';
+        return 'DELETE /datawarehouse/connections/{id} - Soft-deletet eine Connection. Streams, die diese Connection nutzen, schlagen anschließend beim Pull fehl — vorher den Stream-Referenzcheck via "datawarehouse.connection.GET" (streams_count) durchführen.';
     }
 
     public function getSchema(): array

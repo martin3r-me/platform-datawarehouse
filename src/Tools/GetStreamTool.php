@@ -17,12 +17,12 @@ class GetStreamTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.stream.GET';
+        return 'datawarehouse.stream.GET';
     }
 
     public function getDescription(): string
     {
-        return 'GET /datawarehouse/streams/{id} - Holt einen einzelnen Stream inkl. Spalten-Definitionen und letztem Import-Status. ERFORDERLICH: stream_id. Nutze "dwh.streams.GET" um IDs zu finden.';
+        return 'GET /datawarehouse/streams/{id} - Holt einen einzelnen Stream inkl. Spalten-Definitionen und letztem Import-Status. ERFORDERLICH: stream_id. Nutze "datawarehouse.streams.GET" um IDs zu finden.';
     }
 
     public function getSchema(): array
@@ -35,7 +35,7 @@ class GetStreamTool implements ToolContract, ToolMetadataContract
                 ],
                 'stream_id' => [
                     'type' => 'integer',
-                    'description' => 'ID des Streams (ERFORDERLICH). Nutze "dwh.streams.GET" um IDs zu finden.',
+                    'description' => 'ID des Streams (ERFORDERLICH). Nutze "datawarehouse.streams.GET" um IDs zu finden.',
                 ],
             ],
             'required' => ['stream_id'],

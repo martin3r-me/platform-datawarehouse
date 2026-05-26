@@ -17,7 +17,7 @@ class GetImportTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.import.GET';
+        return 'datawarehouse.import.GET';
     }
 
     public function getDescription(): string

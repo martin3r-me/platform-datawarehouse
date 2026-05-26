@@ -17,12 +17,12 @@ class UpdateDashboardTool implements ToolContract, ToolMetadataContract
 
     public function getName(): string
     {
-        return 'dwh.dashboards.PUT';
+        return 'datawarehouse.dashboards.PUT';
     }
 
     public function getDescription(): string
     {
-        return 'PUT /datawarehouse/dashboards/{id} - Aktualisiert ein Dashboard. ERFORDERLICH: dashboard_id. KPI-Verknüpfungen werden über "dwh.dashboards.attachKpi/detachKpi/reorder" gepflegt.';
+        return 'PUT /datawarehouse/dashboards/{id} - Aktualisiert ein Dashboard. ERFORDERLICH: dashboard_id. KPI-Verknüpfungen werden über "datawarehouse.dashboards.attachKpi/detachKpi/reorder" gepflegt.';
     }
 
     public function getSchema(): array
