@@ -72,6 +72,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
 
         $this->registerLivewireComponents();
         $this->registerPullProviders();
+        $this->registerTools();
 
         // Error Reporter Registration
         try {
@@ -103,6 +104,74 @@ class DatawarehouseServiceProvider extends ServiceProvider
                     ->withoutOverlapping(10)
                     ->runInBackground();
             });
+        }
+    }
+
+    /**
+     * Registriert Datawarehouse-Tools für die AI/Chat-Funktionalität.
+     */
+    protected function registerTools(): void
+    {
+        try {
+            $registry = resolve(\Platform\Core\Tools\ToolRegistry::class);
+
+            // Overview (immer zuerst — Einstiegspunkt für LLMs ins Modul)
+            $registry->register(new \Platform\Datawarehouse\Tools\DwhOverviewTool());
+
+            // Streams (CRUD + Status-Actions)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListStreamsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ActivateStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\PauseStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ResumeStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ArchiveStreamTool());
+
+            // Stream Columns (CRUD + Bulk)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListStreamColumnsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateStreamColumnTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateStreamColumnTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteStreamColumnTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\BulkCreateStreamColumnsTool());
+
+            // Connections (CRUD + Test)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListConnectionsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetConnectionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateConnectionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateConnectionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteConnectionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\TestConnectionTool());
+
+            // Providers (read-only)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListProvidersTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetProviderTool());
+
+            // KPIs (CRUD + Execute)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListKpisTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetKpiTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateKpiTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateKpiTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteKpiTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ExecuteKpiTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ExecuteKpiAllRangesTool());
+
+            // Dashboards (CRUD + Pivot-Operations)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListDashboardsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetDashboardTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateDashboardTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateDashboardTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteDashboardTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\AttachKpiToDashboardTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DetachKpiFromDashboardTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ReorderDashboardKpisTool());
+
+            // Imports (read-only)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListImportsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetImportTool());
+        } catch (\Throwable $e) {
+            \Log::warning('Datawarehouse: Tool-Registrierung fehlgeschlagen', ['error' => $e->getMessage()]);
         }
     }
 
