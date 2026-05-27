@@ -4,14 +4,16 @@
 
 ```
 DatawarehouseServiceProvider
-├── register()          # Config laden
+├── register()          # Config laden, ProviderRegistry-Singleton
 └── boot()
     ├── PlatformCore::registerModule()
     ├── ModuleRouter::group()     # Web-Routes (auth)
     ├── ModuleRouter::apiGroup()  # API-Routes (no auth, token-based)
     ├── loadMigrationsFrom()
     ├── loadViewsFrom()
-    └── registerLivewireComponents()
+    ├── registerLivewireComponents()
+    ├── registerPullProviders()   # Lexoffice, Land, Sprache, Feiertage, ...
+    └── registerTools()           # MCP-Tools im ToolRegistry (datawarehouse.*)
 ```
 
 ## Datenmodell
@@ -57,3 +59,18 @@ Content-Type: application/json
 - Auto-Spalten: id, import_id, imported_at, created_at, updated_at
 - Benutzerdefinierte Spalten aus `datawarehouse_stream_columns`
 - Typen: string, integer, decimal, boolean, date, datetime, text, json
+
+## MCP / AI-Tools
+
+Alle Modul-Tools liegen unter `src/Tools/*Tool.php` und werden vom Service-Provider
+im `Platform\Core\Tools\ToolRegistry` registriert (siehe `registerTools()`).
+Einheitliches Namensschema `datawarehouse.{resource}.{verb}` — entspricht dem
+Modul-Key, damit der `McpSessionToolManager` sie per Prefix-Filter findet.
+Einstiegspunkt für LLMs ist `datawarehouse.overview.GET`: liefert eine Karte
+der Konzepte (Streams/Stream-Columns/Connections/Imports/KPIs/Dashboards),
+der Stream-Typen und der Sync-Strategien — vor jeder anderen Aktion zuerst lesen.
+
+KPI-Schreibpfade laufen durch `Services/KpiDefinitionValidator`, der die gleichen
+Whitelists wie der `KpiQueryBuilder` einsetzt (ALLOWED_AGGREGATIONS / ALLOWED_OPERATORS /
+COLUMN_REGEX / ALIAS_REGEX + DB-Existenzcheck). Damit können MCP-Clients keine
+SQL-Fragmente einschmuggeln, die der Query-Builder später durchwinkt.

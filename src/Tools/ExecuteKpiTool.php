@@ -23,7 +23,7 @@ class ExecuteKpiTool implements ToolContract, ToolMetadataContract
 
     public function getDescription(): string
     {
-        return 'POST /datawarehouse/kpis/{id}/execute - Berechnet den aktuellen KPI-Wert. Optional: range (überschreibt display_range — eines aus current_month/current_quarter/current_year/current_week/last_30_days/last_90_days/last_12_months/previous_month/previous_quarter/previous_year/year_to_date) und cache (default true: aktualisiert cached_value, cached_comparison_value und cached_at; false: nur Rückgabe ohne Persistenz). ERFORDERLICH: kpi_id.';
+        return 'POST /datawarehouse/kpis/{id}/execute - Berechnet den aktuellen KPI-Wert. ERFORDERLICH: kpi_id. Optional: range (überschreibt display_range — eines aus current_month/current_quarter/current_year/current_week/last_30_days/last_90_days/last_12_months/previous_month/previous_quarter/previous_year/year_to_date). cache (default true): bei range=null wird der Cache (cached_value/cached_comparison_value/cached_at) aktualisiert. Bei explizitem range ist die Berechnung IMMER einmalig (kein Cache-Schreiben, weil cached_value semantisch zum display_range gehört) — für Comparisons über alle Ranges nutze "datawarehouse.kpis.executeAllRanges".';
     }
 
     public function getSchema(): array
@@ -75,29 +75,20 @@ class ExecuteKpiTool implements ToolContract, ToolMetadataContract
             $builder = app(KpiQueryBuilder::class);
 
             try {
+                // Explicit range: one-off computation, never touches the cache.
+                // cached_value is semantically tied to display_range, so overwriting
+                // it with a different range would lie to every other reader of the KPI.
                 if ($range !== null) {
                     $value = $builder->executeForRange($kpi, $range);
-                    $comparisonDates = $builder->resolveComparisonRange($range);
-                    $comparison = null;
-                    if ($comparisonDates && $cache) {
-                        // The query builder exposes only a private helper for date pairs; recompute
-                        // by temporarily setting display_range and calling executeAndCache for
-                        // full cache write — otherwise just provide the raw range value.
-                        $original = $kpi->display_range;
-                        $kpi->display_range = $range;
-                        $value = $builder->executeAndCache($kpi, 'tool_execute');
-                        $kpi->display_range = $original;
-                        $kpi->save();
-                        $comparison = $kpi->cached_comparison_value !== null ? (float)$kpi->cached_comparison_value : null;
-                    }
 
                     return ToolResult::success([
                         'id'         => $kpi->id,
                         'range'      => $range,
                         'value'      => $value,
-                        'comparison' => $comparison,
-                        'cached'     => $cache,
+                        'comparison' => null,
+                        'cached'     => false,
                         'team_id'    => $kpi->team_id,
+                        'message'    => 'Einmal-Berechnung — nutze "datawarehouse.kpis.executeAllRanges" für Vergleichswerte.',
                     ]);
                 }
 
@@ -108,13 +99,13 @@ class ExecuteKpiTool implements ToolContract, ToolMetadataContract
                 }
 
                 return ToolResult::success([
-                    'id'                      => $kpi->id,
-                    'range'                   => $kpi->display_range,
-                    'value'                   => $value,
-                    'comparison'              => $kpi->cached_comparison_value !== null ? (float)$kpi->cached_comparison_value : null,
-                    'cached'                  => $cache,
-                    'cached_at'               => $kpi->cached_at?->toISOString(),
-                    'team_id'                 => $kpi->team_id,
+                    'id'         => $kpi->id,
+                    'range'      => $kpi->display_range,
+                    'value'      => $value,
+                    'comparison' => $kpi->cached_comparison_value !== null ? (float)$kpi->cached_comparison_value : null,
+                    'cached'     => $cache,
+                    'cached_at'  => $kpi->cached_at?->toISOString(),
+                    'team_id'    => $kpi->team_id,
                 ]);
             } catch (\InvalidArgumentException $e) {
                 return ToolResult::error('VALIDATION_ERROR', 'KPI-Definition ungültig: ' . $e->getMessage());
