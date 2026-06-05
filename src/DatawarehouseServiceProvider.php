@@ -16,8 +16,11 @@ use Platform\Datawarehouse\Console\Commands\SnapshotKpisCommand;
 use Platform\Datawarehouse\Providers\Bundesland\BundeslandProvider;
 use Platform\Datawarehouse\Providers\Feiertage\FeiertageProvider;
 use Platform\Datawarehouse\Providers\Land\LandProvider;
+use Platform\Datawarehouse\Providers\Landkreis\LandkreisProvider;
 use Platform\Datawarehouse\Providers\Lexoffice\LexofficeProvider;
+use Platform\Datawarehouse\Providers\OpenMeteo\OpenMeteoProvider;
 use Platform\Datawarehouse\Providers\ProviderRegistry;
+use Platform\Datawarehouse\Providers\RkiCovidInzidenz\RkiCovidInzidenzProvider;
 use Platform\Datawarehouse\Providers\SchulferienNrw\SchulferienNrwProvider;
 use Platform\Datawarehouse\Providers\Sprache\SpracheProvider;
 use Platform\Datawarehouse\Providers\Waehrung\WaehrungProvider;
@@ -184,8 +187,11 @@ class DatawarehouseServiceProvider extends ServiceProvider
         $registry->register(new LandProvider());
         $registry->register(new SchulferienNrwProvider());
         $registry->register(new BundeslandProvider());
+        $registry->register(new LandkreisProvider());
         $registry->register(new WaehrungProvider());
         $registry->register(new SpracheProvider());
+        $registry->register(new OpenMeteoProvider());
+        $registry->register(new RkiCovidInzidenzProvider());
     }
 
     protected function ensureDimDateSeeded(): void
