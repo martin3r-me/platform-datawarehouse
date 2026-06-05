@@ -71,6 +71,8 @@ trait SerializesProviderDefinition
                 . 'offset_param?, cursor_param?, data_path (Pfad zu den Zeilen in der Antwort, z.B. "data.data"), '
                 . 'last_page_path?, cursor_path?}, '
                 . 'incremental? {field, param, format (PHP date format, z.B. "Y-m-d")}, '
+                . 'computed? (abgeleitete Felder, Array von {key, type:"datediff", from, to, unit:"hours|minutes|seconds|days", decimals?} '
+                . '— z.B. resolution_hours = Stunden zwischen created_at und done_at; ergibt eine numerische Spalte für KPIs), '
                 . 'natural_key? (eindeutiges ID-Feld, default "id"), default_strategy?, supported_strategies?}.',
             'items' => [
                 'type' => 'object',

@@ -138,6 +138,10 @@ class GenericHttpProvider implements PullProvider
         $strategy   = $pagination['strategy'] ?? 'none';
         $naturalKey = $cfg['natural_key'] ?? 'id';
 
+        // Derived fields: compute extra values per row (e.g. a duration between
+        // two timestamps) so they become plain columns the KPI engine can aggregate.
+        $rows = $this->applyComputed($rows, $cfg['computed'] ?? []);
+
         $seenIds = [];
         foreach ($rows as $row) {
             if (is_array($row)) {
@@ -281,6 +285,75 @@ class GenericHttpProvider implements PullProvider
         }
         $base = $this->definition->base_url ?: (string) config('app.url');
         return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * Apply declarative computed fields to each row.
+     *
+     * Config example (per endpoint):
+     *   "computed": [
+     *     {"key": "resolution_hours", "type": "datediff", "from": "created_at",
+     *      "to": "done_at", "unit": "hours", "decimals": 2}
+     *   ]
+     *
+     * @param  array<int, mixed>          $rows
+     * @param  array<int, array<string,mixed>>  $computed
+     * @return array<int, mixed>
+     */
+    protected function applyComputed(array $rows, array $computed): array
+    {
+        if (empty($computed)) {
+            return $rows;
+        }
+
+        foreach ($rows as $i => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            foreach ($computed as $field) {
+                if (!is_array($field) || empty($field['key'])) {
+                    continue;
+                }
+                $rows[$i][$field['key']] = $this->computeField($field, $row);
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Compute one derived value from a row. Returns null when inputs are missing
+     * or unparseable. Currently supports type "datediff".
+     *
+     * @param  array<string, mixed>  $field
+     * @param  array<string, mixed>  $row
+     */
+    protected function computeField(array $field, array $row): mixed
+    {
+        $type = $field['type'] ?? 'datediff';
+
+        if ($type === 'datediff') {
+            $from = data_get($row, $field['from'] ?? '');
+            $to   = data_get($row, $field['to'] ?? '');
+            if (empty($from) || empty($to)) {
+                return null;
+            }
+            $fromTs = strtotime((string) $from);
+            $toTs   = strtotime((string) $to);
+            if ($fromTs === false || $toTs === false) {
+                return null;
+            }
+            $seconds = $toTs - $fromTs;
+            $divisor = match ($field['unit'] ?? 'hours') {
+                'seconds' => 1,
+                'minutes' => 60,
+                'days'    => 86400,
+                default   => 3600, // hours
+            };
+            return round($seconds / $divisor, (int) ($field['decimals'] ?? 2));
+        }
+
+        return null;
     }
 
     protected function authConfig(string $key, mixed $default = null): mixed
