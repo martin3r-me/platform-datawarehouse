@@ -89,6 +89,11 @@ class CreateStreamTool implements ToolContract, ToolMetadataContract
                     'type' => 'boolean',
                     'description' => 'Optional: Soft-Delete für nicht mehr im Pull enthaltene Rows. Nur bei vollen Pulls relevant. Default: false.',
                 ],
+                'pull_config' => [
+                    'type' => 'object',
+                    'description' => 'Optional: Provider-spezifische Konfiguration für den Pull (z.B. {"landkreis_id": "05111"} bei RKI, {"latitude": 51.23, "longitude": 6.78, "location_name": "Düsseldorf"} bei Open-Meteo).',
+                    'additionalProperties' => true,
+                ],
                 'metadata' => [
                     'type' => 'object',
                     'description' => 'Optional: Freie Metadaten als JSON-Objekt.',
@@ -180,6 +185,7 @@ class CreateStreamTool implements ToolContract, ToolMetadataContract
                 'pull_schedule'     => $arguments['pull_schedule'] ?? null,
                 'pull_mode'         => $pullMode,
                 'incremental_field' => $arguments['incremental_field'] ?? null,
+                'pull_config'       => $arguments['pull_config'] ?? null,
                 'change_detection'  => (bool)($arguments['change_detection'] ?? false),
                 'soft_delete'       => (bool)($arguments['soft_delete'] ?? false),
                 'status'            => 'onboarding',

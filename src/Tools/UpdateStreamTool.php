@@ -75,6 +75,11 @@ class UpdateStreamTool implements ToolContract, ToolMetadataContract
                     'type' => 'boolean',
                     'description' => 'Optional: Soft-Delete für nicht mehr im Pull enthaltene Rows an/aus.',
                 ],
+                'pull_config' => [
+                    'type' => 'object',
+                    'description' => 'Optional: Provider-spezifische Konfiguration für den Pull (z.B. {"landkreis_id": "05111"} bei RKI, {"latitude": 51.23, "longitude": 6.78, "location_name": "Düsseldorf"} bei Open-Meteo). Vollständiger Ersatz, kein Merge.',
+                    'additionalProperties' => true,
+                ],
                 'metadata' => [
                     'type' => 'object',
                     'description' => 'Optional: Freie Metadaten (Partial-Merge, kein vollständiger Ersatz).',
@@ -146,6 +151,14 @@ class UpdateStreamTool implements ToolContract, ToolMetadataContract
             }
             if (array_key_exists('soft_delete', $arguments)) {
                 $stream->soft_delete = (bool)$arguments['soft_delete'];
+            }
+
+            if (array_key_exists('pull_config', $arguments)) {
+                $pc = $arguments['pull_config'];
+                if ($pc !== null && !is_array($pc)) {
+                    return ToolResult::error('VALIDATION_ERROR', 'pull_config muss ein Objekt sein.');
+                }
+                $stream->pull_config = $pc;
             }
 
             if (array_key_exists('metadata', $arguments)) {
