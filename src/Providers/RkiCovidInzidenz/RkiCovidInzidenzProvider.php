@@ -98,7 +98,7 @@ class RkiCovidInzidenzProvider implements PullProvider
 
     public function fetch(PullContext $context): PullResult
     {
-        $endpointKey = $context->endpoint;
+        $endpointKey = $context->endpoint->key;
         $csvFile = self::CSV_FILES[$endpointKey] ?? null;
 
         if (! $csvFile) {
