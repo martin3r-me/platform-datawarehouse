@@ -49,6 +49,15 @@ class PullStreamService
         }
 
         $provider = $this->registry->get($connection->provider_key);
+
+        // Cross-team guard: a config provider (GenericHttpProvider) is resolved by
+        // its globally-unique key without team scope, so make sure its definition
+        // belongs to the same team as the connection using it.
+        if ($provider instanceof \Platform\Datawarehouse\Providers\Generic\GenericHttpProvider
+            && (int) $provider->definition()->team_id !== (int) $connection->team_id) {
+            return $this->fail($stream, $userId, "Provider '{$connection->provider_key}' gehört zu einem anderen Team.", $startTime);
+        }
+
         $endpoints = $provider->endpoints();
         if (!isset($endpoints[$stream->endpoint_key])) {
             return $this->fail($stream, $userId, "Endpoint '{$stream->endpoint_key}' not available on provider '{$connection->provider_key}'.", $startTime);

@@ -151,6 +151,14 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\ListProvidersTool());
             $registry->register(new \Platform\Datawarehouse\Tools\GetProviderTool());
 
+            // Provider-Definitionen (konfigurierbare HTTP-Provider — CRUD + Test)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListProviderDefinitionsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\GetProviderDefinitionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateProviderDefinitionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateProviderDefinitionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteProviderDefinitionTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\TestProviderDefinitionTool());
+
             // KPIs (CRUD + Execute)
             $registry->register(new \Platform\Datawarehouse\Tools\ListKpisTool());
             $registry->register(new \Platform\Datawarehouse\Tools\GetKpiTool());

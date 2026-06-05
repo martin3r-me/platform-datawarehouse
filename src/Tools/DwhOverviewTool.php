@@ -75,6 +75,14 @@ class DwhOverviewTool implements ToolContract, ToolMetadataContract
                         'concept' => 'Codeseitige Singletons (keine DB-Einträge), registriert in der ProviderRegistry. Jeder Provider exposed authFields (Login-Felder) + endpoints (callable Resources).',
                         'note' => 'Anlegen einer Connection erfordert provider_key + Werte für die authFields. Stream kann dann auf einen endpoint_key des Providers zeigen.',
                     ],
+                    'provider_definitions' => [
+                        'model' => 'Platform\\Datawarehouse\\Models\\DatawarehouseProviderDefinition',
+                        'table' => 'datawarehouse_provider_definitions',
+                        'key_fields' => ['id', 'key', 'label', 'base_url', 'auth_type', 'auth_config', 'endpoints', 'is_active', 'team_id'],
+                        'concept' => 'Konfigurierbare HTTP-Pull-Provider OHNE Code — per UI/LLM angelegt und team-scoped. Die ProviderRegistry verpackt sie zur Laufzeit in einen GenericHttpProvider, sodass sie wie Code-Provider als provider_key einer Connection nutzbar sind.',
+                        'note' => 'Workflow: provider_definitions.POST (Endpunkte mit path/query/pagination/data_path/incremental definieren) → provider_definitions.test (Beispielzeilen prüfen) → Connection mit dem generierten key → pull_get-Stream + Spalten. auth_type: none|bearer|header|query.',
+                        'tools' => ['datawarehouse.provider_definitions.GET', 'datawarehouse.provider_definition.GET', 'datawarehouse.provider_definitions.POST', 'datawarehouse.provider_definitions.PUT', 'datawarehouse.provider_definitions.DELETE', 'datawarehouse.provider_definitions.test'],
+                    ],
                     'imports' => [
                         'model' => 'Platform\\Datawarehouse\\Models\\DatawarehouseImport',
                         'table' => 'datawarehouse_imports',

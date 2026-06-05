@@ -49,6 +49,10 @@
             @svg('heroicon-o-link', 'w-4 h-4')
             <span>Verbindungen</span>
         </a>
+        <a href="{{ route('datawarehouse.providers') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
+            @svg('heroicon-o-globe-alt', 'w-4 h-4')
+            <span>Provider</span>
+        </a>
     </div>
 
     {{-- Stammdaten --}}
@@ -105,6 +109,9 @@
             </a>
             <a href="{{ route('datawarehouse.connections') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-[#2C3135] transition-colors" title="Verbindungen">
                 @svg('heroicon-o-link', 'w-5 h-5')
+            </a>
+            <a href="{{ route('datawarehouse.providers') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-[#2C3135] transition-colors" title="Provider">
+                @svg('heroicon-o-globe-alt', 'w-5 h-5')
             </a>
         </div>
     </div>
