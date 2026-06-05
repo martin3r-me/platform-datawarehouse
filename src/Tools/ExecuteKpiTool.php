@@ -34,7 +34,7 @@ class ExecuteKpiTool implements ToolContract, ToolMetadataContract
                 'kpi_id'  => ['type' => 'integer', 'description' => 'ID des KPI (ERFORDERLICH).'],
                 'range' => [
                     'type' => 'string',
-                    'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
+                    'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
                     'description' => 'Optional: explicit date range. Default: display_range des KPI bzw. globaler Wert ohne Datumsfilter.',
                 ],
                 'cache' => [

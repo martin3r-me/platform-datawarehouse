@@ -41,7 +41,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'position'      => ['type' => 'integer', 'description' => 'Optional: Sortierposition.'],
                 'display_range' => [
                     'type' => 'string',
-                    'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
+                    'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
                     'description' => 'Optional: Standard-Anzeigezeitraum für gecachte Werte.',
                 ],
                 'definition'    => [
@@ -94,8 +94,8 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'description'   => $arguments['description'] ?? null,
                 'icon'          => $arguments['icon'] ?? 'chart-bar',
                 'variant'       => $arguments['variant'] ?? 'primary',
-                'unit'          => $arguments['unit'] ?? null,
-                'format'        => $arguments['format'] ?? null,
+                'unit'          => $arguments['unit'] ?? '',
+                'format'        => $arguments['format'] ?? 'number',
                 'decimals'      => isset($arguments['decimals']) ? (int)$arguments['decimals'] : 0,
                 'position'      => isset($arguments['position']) ? (int)$arguments['position'] : 0,
                 'definition'    => $definition,

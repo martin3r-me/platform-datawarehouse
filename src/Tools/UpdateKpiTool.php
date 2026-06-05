@@ -42,7 +42,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'position'      => ['type' => 'integer'],
                 'display_range' => [
                     'type' => 'string',
-                    'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
+                    'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
                 ],
                 'definition' => [
                     'type' => 'object',
