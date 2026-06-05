@@ -62,7 +62,7 @@ class CreateDashboardTool implements ToolContract, ToolMetadataContract
                 'user_id'     => $context->user->id,
                 'name'        => $name,
                 'description' => $arguments['description'] ?? null,
-                'icon'        => $arguments['icon'] ?? null,
+                'icon'        => $arguments['icon'] ?? 'squares-2x2',
                 'position'    => isset($arguments['position']) ? (int)$arguments['position'] : 0,
             ]);
 

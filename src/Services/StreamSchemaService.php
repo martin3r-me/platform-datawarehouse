@@ -159,8 +159,17 @@ class StreamSchemaService
                 $table->timestamp('imported_at')->nullable();
 
                 // Uniform system columns (all strategies).
+                // For the "current" strategy the writer upserts on _external_id, which
+                // only deduplicates if the column carries a UNIQUE index (MySQL
+                // ON DUPLICATE KEY relies on a real unique/primary key). Other
+                // strategies keep multiple rows per external id (snapshot generations,
+                // scd2 versions, append) so they use a plain index.
                 $table->string('_external_id')->nullable();
-                $table->index('_external_id', self::safeIndexName($tableName, '_external_id'));
+                if ($strategy === 'current') {
+                    $table->unique('_external_id', self::safeIndexName($tableName, '_external_id', 'unique'));
+                } else {
+                    $table->index('_external_id', self::safeIndexName($tableName, '_external_id'));
+                }
                 $table->timestamp('_synced_at')->nullable();
                 $table->index('_synced_at', self::safeIndexName($tableName, '_synced_at'));
                 $table->unsignedBigInteger('_source_run_id')->nullable();
