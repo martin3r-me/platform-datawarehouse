@@ -21,7 +21,7 @@ class KpiDefinitionValidator
     public const ALLOWED_TERM_OPERATORS  = ['+', '-', '*', '/'];
     public const ALLOWED_DATE_RANGES     = [
         'current_month', 'current_quarter', 'current_year', 'current_week',
-        'last_30_days', 'last_90_days', 'last_12_months',
+        'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months',
         'previous_month', 'previous_quarter', 'previous_year',
         'year_to_date',
     ];
