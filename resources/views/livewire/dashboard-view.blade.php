@@ -80,6 +80,13 @@
                                         </span>
                                     @endif
                                     <span class="text-[11px] text-gray-400">{{ collect([$kpi->displayRangeLabel(), $kpi->unit])->filter()->implode(' · ') }}</span>
+                                    @php $childCount = $kpi->children()->count(); @endphp
+                                    @if($childCount > 0)
+                                        <span class="text-[11px] text-[#166EE1] flex items-center gap-0.5 ml-auto shrink-0">
+                                            {{ $childCount }} Bestandteile
+                                            @svg('heroicon-o-chevron-right', 'w-3.5 h-3.5')
+                                        </span>
+                                    @endif
                                 </div>
                             </a>
 

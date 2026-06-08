@@ -78,6 +78,26 @@ class KpiDetail extends Component
         $this->redirect(route('datawarehouse.dashboard'));
     }
 
+    /**
+     * Child KPIs for drill-down (empty for leaf KPIs).
+     */
+    #[Computed]
+    public function children()
+    {
+        return $this->kpi->children()->get();
+    }
+
+    /**
+     * Parent KPI for the "up one level" link (null for top-level KPIs).
+     */
+    #[Computed]
+    public function parentKpi(): ?DatawarehouseKpi
+    {
+        return $this->kpi->parent_kpi_id
+            ? DatawarehouseKpi::find($this->kpi->parent_kpi_id)
+            : null;
+    }
+
     #[Computed]
     public function snapshots()
     {

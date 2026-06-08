@@ -4,10 +4,16 @@
     </x-slot>
 
     <x-slot name="actionbar">
-        <x-ui-page-actionbar :breadcrumbs="[
-            ['label' => 'Datawarehouse', 'href' => route('datawarehouse.dashboard'), 'icon' => 'circle-stack'],
-            ['label' => $kpi->name],
-        ]" />
+        @php
+            $breadcrumbs = [
+                ['label' => 'Datawarehouse', 'href' => route('datawarehouse.dashboard'), 'icon' => 'circle-stack'],
+            ];
+            if ($this->parentKpi) {
+                $breadcrumbs[] = ['label' => $this->parentKpi->name, 'href' => route('datawarehouse.kpi.detail', $this->parentKpi)];
+            }
+            $breadcrumbs[] = ['label' => $kpi->name];
+        @endphp
+        <x-ui-page-actionbar :breadcrumbs="$breadcrumbs" />
     </x-slot>
 
     <x-ui-page-container>
@@ -25,6 +31,12 @@
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-100 text-red-700">Fehler</span>
                         @endif
                     </div>
+                    @if($this->parentKpi)
+                        <a href="{{ route('datawarehouse.kpi.detail', $this->parentKpi) }}" class="inline-flex items-center gap-1 text-[12px] text-gray-500 hover:text-[#166EE1] mt-1">
+                            @svg('heroicon-o-arrow-up-left', 'w-3.5 h-3.5')
+                            Teil von {{ $this->parentKpi->name }}
+                        </a>
+                    @endif
                     @if($kpi->description)
                         <p class="text-[13px] text-gray-600 mt-1 max-w-2xl whitespace-pre-line">{{ $kpi->description }}</p>
                     @endif
@@ -91,6 +103,45 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Bestandteile (Drill-down zu Child-KPIs) --}}
+            @if($this->children->isNotEmpty())
+                @php $childSum = $this->children->sum(fn ($c) => (float) ($c->cached_value ?? 0)); @endphp
+                <section class="bg-white rounded-lg border border-gray-200">
+                    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-900">Bestandteile</h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Klicke eine Kennzahl, um tiefer einzusteigen</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-[11px] text-gray-400">Summe Bestandteile</div>
+                            <div class="text-[13px] font-semibold text-gray-900 tabular-nums">
+                                {{ number_format($childSum, $kpi->decimals ?? 0, ',', '.') }}
+                                @if($kpi->unit)<span class="font-normal text-gray-400">{{ $kpi->unit }}</span>@endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                        @foreach($this->children as $child)
+                            <a href="{{ route('datawarehouse.kpi.detail', $child) }}" class="block p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-white hover:shadow-sm hover:border-[#166EE1]/40 transition-colors">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0">
+                                        @svg('heroicon-o-' . ($child->icon ?: 'chart-bar'), 'w-4 h-4 text-[#166EE1]')
+                                    </div>
+                                    <div class="text-[13px] font-medium text-gray-900 truncate">{{ $child->name }}</div>
+                                    @if($child->children()->exists())
+                                        @svg('heroicon-o-chevron-right', 'w-4 h-4 text-gray-300 ml-auto shrink-0')
+                                    @endif
+                                </div>
+                                <div class="text-xl font-bold text-gray-900 tabular-nums">
+                                    {{ $child->cached_value !== null ? number_format((float) $child->cached_value, $child->decimals ?? 0, ',', '.') : '—' }}
+                                    @if($child->unit)<span class="text-[12px] font-normal text-gray-400">{{ $child->unit }}</span>@endif
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
 
             {{-- All Ranges Grid --}}
             @if($kpi->hasDateColumn())
