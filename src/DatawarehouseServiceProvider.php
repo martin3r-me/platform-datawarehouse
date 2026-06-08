@@ -140,6 +140,11 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\DeleteStreamColumnTool());
             $registry->register(new \Platform\Datawarehouse\Tools\BulkCreateStreamColumnsTool());
 
+            // Stream Relations (Multi-Stream-JOINs für KPIs)
+            $registry->register(new \Platform\Datawarehouse\Tools\ListStreamRelationsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateStreamRelationTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteStreamRelationTool());
+
             // Connections (CRUD + Test)
             $registry->register(new \Platform\Datawarehouse\Tools\ListConnectionsTool());
             $registry->register(new \Platform\Datawarehouse\Tools\GetConnectionTool());

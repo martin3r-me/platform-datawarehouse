@@ -10,11 +10,13 @@ use Platform\Core\Tools\Concerns\HasStandardizedWriteOperations;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Services\KpiDefinitionValidator;
 use Platform\Datawarehouse\Tools\Concerns\ResolvesDwhTeam;
+use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiHierarchy;
 
 class CreateKpiTool implements ToolContract, ToolMetadataContract
 {
     use HasStandardizedWriteOperations;
     use ResolvesDwhTeam;
+    use ValidatesKpiHierarchy;
 
     public function getName(): string
     {
@@ -39,6 +41,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'format'        => ['type' => 'string', 'description' => 'Optional: Format-Hinweis (z.B. "currency", "percent", "number").'],
                 'decimals'      => ['type' => 'integer', 'description' => 'Optional: Anzahl Nachkommastellen.'],
                 'position'      => ['type' => 'integer', 'description' => 'Optional: Sortierposition.'],
+                'parent_kpi_id' => ['type' => 'integer', 'description' => 'Optional: ID eines Eltern-KPI für die Drill-down-Hierarchie (z. B. "RR" als Eltern von "2500"). null/weglassen = Top-Level-KPI.'],
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
@@ -87,6 +90,13 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('VALIDATION_ERROR', 'Ungültiges display_range.');
             }
 
+            $parentKpiId = isset($arguments['parent_kpi_id']) && $arguments['parent_kpi_id'] !== null
+                ? (int) $arguments['parent_kpi_id']
+                : null;
+            if ($error = $this->validateKpiParent($parentKpiId, $teamId)) {
+                return ToolResult::error('VALIDATION_ERROR', $error);
+            }
+
             $kpi = DatawarehouseKpi::create([
                 'team_id'       => $teamId,
                 'user_id'       => $context->user->id,
@@ -98,6 +108,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'format'        => $arguments['format'] ?? 'number',
                 'decimals'      => isset($arguments['decimals']) ? (int)$arguments['decimals'] : 0,
                 'position'      => isset($arguments['position']) ? (int)$arguments['position'] : 0,
+                'parent_kpi_id' => $parentKpiId,
                 'definition'    => $definition,
                 'display_range' => $displayRange,
                 'status'        => 'active',
@@ -107,6 +118,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'id'            => $kpi->id,
                 'uuid'          => $kpi->uuid,
                 'name'          => $kpi->name,
+                'parent_kpi_id' => $kpi->parent_kpi_id !== null ? (int) $kpi->parent_kpi_id : null,
                 'display_range' => $kpi->display_range,
                 'status'        => $kpi->status,
                 'team_id'       => $kpi->team_id,

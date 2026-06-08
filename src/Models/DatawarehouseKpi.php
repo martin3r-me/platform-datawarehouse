@@ -27,6 +27,7 @@ class DatawarehouseKpi extends Model
         'format',
         'decimals',
         'position',
+        'parent_kpi_id',
         'definition',
         'cached_value',
         'cached_at',
@@ -69,6 +70,22 @@ class DatawarehouseKpi extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(DatawarehouseKpiSnapshot::class, 'kpi_id');
+    }
+
+    /**
+     * Parent KPI in a drill-down hierarchy (null for top-level KPIs).
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_kpi_id');
+    }
+
+    /**
+     * Child KPIs that drill down from this one.
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_kpi_id')->orderBy('position');
     }
 
     public function dashboards(): BelongsToMany

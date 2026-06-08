@@ -10,11 +10,13 @@ use Platform\Core\Tools\Concerns\HasStandardizedWriteOperations;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Services\KpiDefinitionValidator;
 use Platform\Datawarehouse\Tools\Concerns\ResolvesDwhTeam;
+use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiHierarchy;
 
 class UpdateKpiTool implements ToolContract, ToolMetadataContract
 {
     use HasStandardizedWriteOperations;
     use ResolvesDwhTeam;
+    use ValidatesKpiHierarchy;
 
     public function getName(): string
     {
@@ -40,6 +42,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'format'        => ['type' => 'string'],
                 'decimals'      => ['type' => 'integer'],
                 'position'      => ['type' => 'integer'],
+                'parent_kpi_id' => ['type' => ['integer', 'null'], 'description' => 'Optional: Eltern-KPI für die Drill-down-Hierarchie setzen. null = zum Top-Level lösen. Selbst-/Zyklusbezüge werden abgelehnt.'],
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
@@ -92,6 +95,14 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 $kpi->display_range = $range;
             }
 
+            if (array_key_exists('parent_kpi_id', $arguments)) {
+                $parentKpiId = $arguments['parent_kpi_id'] !== null ? (int) $arguments['parent_kpi_id'] : null;
+                if ($error = $this->validateKpiParent($parentKpiId, $teamId, $kpi)) {
+                    return ToolResult::error('VALIDATION_ERROR', $error);
+                }
+                $kpi->parent_kpi_id = $parentKpiId;
+            }
+
             $definitionChanged = false;
             if (array_key_exists('definition', $arguments)) {
                 $definition = $arguments['definition'];
@@ -116,6 +127,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
             return ToolResult::success([
                 'id'                 => $kpi->id,
                 'name'               => $kpi->name,
+                'parent_kpi_id'      => $kpi->parent_kpi_id !== null ? (int) $kpi->parent_kpi_id : null,
                 'display_range'      => $kpi->display_range,
                 'status'             => $kpi->status,
                 'team_id'            => $kpi->team_id,

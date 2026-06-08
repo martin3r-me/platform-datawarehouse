@@ -39,6 +39,10 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
                         'type' => 'string',
                         'description' => 'Optional: Filter nach Status (z.B. "active", "error").',
                     ],
+                    'tree' => [
+                        'type' => 'boolean',
+                        'description' => 'Optional: Wenn true, wird die Drill-down-Hierarchie verschachtelt zurückgegeben — nur Top-Level-KPIs (parent_kpi_id=null), jeweils mit children[]. Paging wird in diesem Modus ignoriert.',
+                    ],
                 ],
             ]
         );
@@ -57,6 +61,20 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
 
             if (isset($arguments['status'])) {
                 $query->where('status', $arguments['status']);
+            }
+
+            // Tree mode: return the drill-down hierarchy nested, ignore paging.
+            if (!empty($arguments['tree'])) {
+                $all = (clone $query)->orderBy('position')->get();
+                $byParent = $all->groupBy('parent_kpi_id');
+                $roots = $all->filter(fn (DatawarehouseKpi $k) => $k->parent_kpi_id === null);
+
+                return ToolResult::success([
+                    'data'    => $roots->map(fn (DatawarehouseKpi $k) => $this->mapNode($k, $byParent))->values()->toArray(),
+                    'tree'    => true,
+                    'total'   => $all->count(),
+                    'team_id' => $teamId,
+                ]);
             }
 
             $this->applyStandardFilters($query, $arguments, [
@@ -80,6 +98,7 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
                 'format'                  => $k->format,
                 'decimals'                => (int)$k->decimals,
                 'position'                => (int)$k->position,
+                'parent_kpi_id'           => $k->parent_kpi_id !== null ? (int)$k->parent_kpi_id : null,
                 'display_range'           => $k->display_range,
                 'display_range_label'     => $k->displayRangeLabel(),
                 'cached_value'            => $k->cached_value !== null ? (float)$k->cached_value : null,
@@ -102,6 +121,28 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
         } catch (\Throwable $e) {
             return ToolResult::error('EXECUTION_ERROR', 'Fehler beim Laden der KPIs: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Map a KPI to a compact tree node with nested children.
+     *
+     * @param  \Illuminate\Support\Collection  $byParent  KPIs grouped by parent_kpi_id.
+     */
+    private function mapNode(DatawarehouseKpi $kpi, $byParent): array
+    {
+        $children = $byParent->get($kpi->id, collect());
+
+        return [
+            'id'              => $kpi->id,
+            'name'            => $kpi->name,
+            'icon'            => $kpi->icon,
+            'variant'         => $kpi->variant,
+            'unit'            => $kpi->unit,
+            'cached_value'    => $kpi->cached_value !== null ? (float)$kpi->cached_value : null,
+            'trend_direction' => $kpi->trendDirection(),
+            'position'        => (int)$kpi->position,
+            'children'        => $children->map(fn (DatawarehouseKpi $c) => $this->mapNode($c, $byParent))->values()->toArray(),
+        ];
     }
 
     public function getMetadata(): array
