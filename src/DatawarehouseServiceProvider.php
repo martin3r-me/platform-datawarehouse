@@ -131,6 +131,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\PauseStreamTool());
             $registry->register(new \Platform\Datawarehouse\Tools\ResumeStreamTool());
             $registry->register(new \Platform\Datawarehouse\Tools\ArchiveStreamTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\PreviewStreamDataTool());
 
             // Stream Columns (CRUD + Bulk)
             $registry->register(new \Platform\Datawarehouse\Tools\ListStreamColumnsTool());
@@ -167,6 +168,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\DeleteKpiTool());
             $registry->register(new \Platform\Datawarehouse\Tools\ExecuteKpiTool());
             $registry->register(new \Platform\Datawarehouse\Tools\ExecuteKpiAllRangesTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\PreviewKpiTool());
 
             // Dashboards (CRUD + Pivot-Operations)
             $registry->register(new \Platform\Datawarehouse\Tools\ListDashboardsTool());
