@@ -205,12 +205,12 @@
                                             <button type="button" @click="sel = null" class="text-[11px] text-gray-400 hover:text-gray-700">schlie&szlig;en</button>
                                         </div>
                                         <div class="space-y-1.5">
-                                            @foreach($md['items'] as $it)
+                                            @foreach($md['items'] as $j => $it)
                                                 @php $pct = $mdMax > 0 ? max(1, round($it['value'] / $mdMax * 100)) : 0; @endphp
                                                 <div class="flex items-center gap-3">
                                                     <span class="w-28 shrink-0 text-[12px] text-gray-700 truncate">{{ $it['name'] }}</span>
                                                     <div class="flex-1 h-4 rounded bg-gray-200 overflow-hidden">
-                                                        <div class="h-full rounded bg-[#166EE1]/70" style="width: {{ $pct }}%"></div>
+                                                        <div class="h-full rounded bg-[#166EE1]/70 dwh-bar-x" style="width: {{ $pct }}%; animation-delay: {{ $j * 60 }}ms"></div>
                                                     </div>
                                                     <span class="w-28 shrink-0 text-right text-[12px] tabular-nums text-gray-900">{{ number_format($it['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif</span>
                                                 </div>
