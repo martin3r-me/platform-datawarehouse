@@ -152,6 +152,7 @@
                     $quarters = $this->breakdown['quarters'];
                     $maxMonth = collect($months)->max('value') ?: 1;
                     $maxQuarter = collect($quarters)->max('value') ?: 1;
+                    $hasDetail = !empty($this->monthlyDetail);
                     $compact = function ($v) {
                         $a = abs($v);
                         if ($a >= 1000000) return number_format($v / 1000000, 1, ',', '.') . ' Mio';
@@ -172,17 +173,19 @@
                 <section class="bg-white rounded-lg border border-gray-200" wire:key="breakdown-{{ $kpi->id }}">
                     <div class="px-4 py-3 border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">Zeitliche Aufschl&uuml;sselung</h3>
-                        <p class="text-[11px] text-gray-400 mt-0.5">Aggregiert &uuml;ber die Datumsspalte &middot; {{ $kpi->displayRangeLabel() ?: 'Gesamt' }}</p>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Aggregiert &uuml;ber die Datumsspalte &middot; {{ $kpi->displayRangeLabel() ?: 'Gesamt' }}@if($hasDetail) &middot; Klicke einen Monat f&uuml;r die Kostenstellen@endif</p>
                     </div>
 
-                    <div class="p-4 space-y-6">
+                    <div class="p-4 space-y-6" x-data="{ sel: null }">
                         {{-- Monate: vertikale Säulen --}}
                         <div>
                             <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-3">Monate</div>
                             <div class="flex items-end gap-1.5" style="height: 11rem;">
                                 @foreach($months as $i => $m)
                                     @php $pct = $maxMonth > 0 ? max(2, round($m['value'] / $maxMonth * 100)) : 0; @endphp
-                                    <div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end">
+                                    <div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end px-0.5 {{ $hasDetail ? 'cursor-pointer' : '' }}"
+                                         :class="{ 'bg-blue-50 rounded-lg': sel === @js($m['period']) }"
+                                         @if($hasDetail) @click="sel = (sel === @js($m['period']) ? null : @js($m['period']))" @endif>
                                         <div class="text-[10px] text-gray-500 tabular-nums mb-1 whitespace-nowrap">{{ $compact($m['value']) }}</div>
                                         <div class="w-full bg-[#166EE1] rounded-t dwh-bar-y"
                                              style="height: {{ $pct }}%; animation-delay: {{ $i * 55 }}ms"
@@ -191,6 +194,31 @@
                                     </div>
                                 @endforeach
                             </div>
+
+                            {{-- Kostenstellen je Monat (Klick-Drilldown) --}}
+                            @if($hasDetail)
+                                @foreach($months as $m)
+                                    @php $md = $this->monthlyDetail[$m['period']] ?? ['items' => []]; $mdMax = collect($md['items'])->max('value') ?: 1; @endphp
+                                    <div x-show="sel === @js($m['period'])" style="display:none" class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-[12px] font-semibold text-gray-900">{{ $m['label'] }} &middot; Kostenstellen</span>
+                                            <button type="button" @click="sel = null" class="text-[11px] text-gray-400 hover:text-gray-700">schlie&szlig;en</button>
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            @foreach($md['items'] as $it)
+                                                @php $pct = $mdMax > 0 ? max(1, round($it['value'] / $mdMax * 100)) : 0; @endphp
+                                                <div class="flex items-center gap-3">
+                                                    <span class="w-28 shrink-0 text-[12px] text-gray-700 truncate">{{ $it['name'] }}</span>
+                                                    <div class="flex-1 h-4 rounded bg-gray-200 overflow-hidden">
+                                                        <div class="h-full rounded bg-[#166EE1]/70" style="width: {{ $pct }}%"></div>
+                                                    </div>
+                                                    <span class="w-28 shrink-0 text-right text-[12px] tabular-nums text-gray-900">{{ number_format($it['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
                         </div>
 
                         {{-- Quartale: horizontale Balken --}}

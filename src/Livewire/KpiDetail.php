@@ -120,6 +120,62 @@ class KpiDetail extends Component
         }
     }
 
+    /**
+     * Per-month breakdown by child KPIs (cost centers): for each month of the
+     * parent's time chart, each child's value in that month. Drives the
+     * "click a month → see its cost centers" drill-down. Empty for leaf KPIs
+     * or KPIs without a date column.
+     *
+     * @return array<string, array{label: string, items: array<int, array{name: string, value: float}>}>
+     */
+    #[Computed]
+    public function monthlyDetail(): array
+    {
+        if (!$this->kpi->hasDateColumn()) {
+            return [];
+        }
+
+        $children = $this->kpi->children()->get();
+        if ($children->isEmpty()) {
+            return [];
+        }
+
+        $months = $this->breakdown['months'] ?? [];
+        if (empty($months)) {
+            return [];
+        }
+
+        $builder = new KpiQueryBuilder();
+
+        // child name => [period => value]
+        $childMaps = [];
+        $order = [];
+        foreach ($children as $child) {
+            $order[] = $child->name;
+            $map = [];
+            try {
+                foreach ($builder->executeBreakdown($child, 'month') as $row) {
+                    $map[$row['period']] = $row['value'];
+                }
+            } catch (\Throwable) {
+                // child without a usable definition → leave empty (counts as 0)
+            }
+            $childMaps[$child->name] = $map;
+        }
+
+        $detail = [];
+        foreach ($months as $m) {
+            $items = [];
+            foreach ($order as $name) {
+                $items[] = ['name' => $name, 'value' => $childMaps[$name][$m['period']] ?? 0.0];
+            }
+            usort($items, fn ($a, $b) => $b['value'] <=> $a['value']);
+            $detail[$m['period']] = ['label' => $m['label'], 'items' => $items];
+        }
+
+        return $detail;
+    }
+
     #[Computed]
     public function snapshots()
     {
