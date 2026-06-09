@@ -36,8 +36,11 @@ class Sidebar extends Component
             ->orderBy('name')
             ->get();
 
+        $kpiStatuses = ['active', 'draft', 'error'];
         $kpis = DatawarehouseKpi::forTeam($teamId)
-            ->whereIn('status', ['active', 'draft', 'error'])
+            ->whereIn('status', $kpiStatuses)
+            ->whereNull('parent_kpi_id')
+            ->with(['children' => fn ($q) => $q->whereIn('status', $kpiStatuses)->orderBy('position')])
             ->orderBy('position')
             ->get();
 
