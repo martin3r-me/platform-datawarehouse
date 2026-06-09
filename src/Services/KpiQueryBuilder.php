@@ -352,6 +352,19 @@ class KpiQueryBuilder
             }
         }
 
+        // Restrict to the most recent import run, regardless of sync strategy.
+        // _source_run_id is a uniform system column on every dynamic table, so
+        // this works for append streams too — where each full re-send is a new
+        // run and "latest" snapshot semantics would otherwise not apply. This is
+        // the right mode when the source delivers a complete dataset every run.
+        if ($snapshotMode === 'latest_run') {
+            foreach ($resolvedStreams as $alias => $stream) {
+                $tableName = $stream->getDynamicTableName();
+                $subQuery = DB::table($tableName)->selectRaw('MAX(_source_run_id)');
+                $query->where($alias . '._source_run_id', '=', $subQuery);
+            }
+        }
+
         // Apply currency filter for SCD2-strategy streams: only count rows
         // that represent the entity's *current* version. Closed historical
         // versions stay queryable for point-in-time analysis elsewhere.

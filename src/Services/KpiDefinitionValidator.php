@@ -28,7 +28,7 @@ class KpiDefinitionValidator
     public const ALLOWED_CALENDAR_COLUMNS = [
         'weekday', 'weekday_num', 'is_weekend', 'kw', 'month', 'quarter', 'year',
     ];
-    public const ALLOWED_SNAPSHOT_MODES = ['latest', 'all'];
+    public const ALLOWED_SNAPSHOT_MODES = ['latest', 'all', 'latest_run'];
     public const SYSTEM_COLUMNS = ['id', '_snapshot_at', '_imported_at', '_valid_from', '_valid_to', '_is_deleted', '_is_current', 'created_at', 'updated_at'];
 
     private const COLUMN_REGEX = '/^[a-zA-Z_][a-zA-Z0-9_]*$/';
@@ -207,7 +207,7 @@ class KpiDefinitionValidator
 
         $snapshotMode = $definition['snapshot_mode'] ?? 'latest';
         if (!in_array($snapshotMode, self::ALLOWED_SNAPSHOT_MODES, true)) {
-            return 'snapshot_mode muss "latest" oder "all" sein.';
+            return 'snapshot_mode muss "latest", "all" oder "latest_run" sein.';
         }
 
         return null;
