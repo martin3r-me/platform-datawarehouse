@@ -10,6 +10,7 @@ use Platform\Core\Tools\Concerns\HasStandardizedWriteOperations;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Services\KpiDefinitionValidator;
 use Platform\Datawarehouse\Tools\Concerns\ResolvesDwhTeam;
+use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiAmpel;
 use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiHierarchy;
 
 class UpdateKpiTool implements ToolContract, ToolMetadataContract
@@ -17,6 +18,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
     use HasStandardizedWriteOperations;
     use ResolvesDwhTeam;
     use ValidatesKpiHierarchy;
+    use ValidatesKpiAmpel;
 
     public function getName(): string
     {
@@ -44,6 +46,11 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'position'      => ['type' => 'integer'],
                 'parent_kpi_id' => ['type' => ['integer', 'null'], 'description' => 'Optional: Eltern-KPI für die Drill-down-Hierarchie setzen. null = zum Top-Level lösen. Selbst-/Zyklusbezüge werden abgelehnt.'],
                 'is_group'      => ['type' => 'boolean', 'description' => 'Optional: zu Navigations-Ordner machen (true) oder zurück zu Wert-KPI (false). Bei false muss eine gültige definition vorhanden/mitgesendet sein.'],
+                'target_value'     => ['type' => ['number', 'null'], 'description' => 'Optional: fixer Zielwert für die Ampel (null = entfernen).'],
+                'target_kpi_id'    => ['type' => ['integer', 'null'], 'description' => 'Optional: Referenz-KPI als Ziel (z. B. Plan) → Ampel rechnet Ist/Plan (null = entfernen).'],
+                'target_direction' => ['type' => 'string', 'enum' => ['higher_better', 'lower_better'], 'description' => 'Optional: higher_better (Default) oder lower_better.'],
+                'green_pct'        => ['type' => ['integer', 'null'], 'description' => 'Optional: Zielerreichung %, ab der grün gilt (Default 100).'],
+                'yellow_pct'       => ['type' => ['integer', 'null'], 'description' => 'Optional: Zielerreichung %, ab der gelb gilt (darunter rot; Default 80).'],
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
@@ -106,6 +113,25 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
 
             if (array_key_exists('is_group', $arguments)) {
                 $kpi->is_group = (bool) $arguments['is_group'];
+            }
+
+            if ($error = $this->validateAmpelArgs($arguments, $teamId, (int) $kpi->id)) {
+                return ToolResult::error('VALIDATION_ERROR', $error);
+            }
+            if (array_key_exists('target_value', $arguments)) {
+                $kpi->target_value = $arguments['target_value'] !== null ? (float) $arguments['target_value'] : null;
+            }
+            if (array_key_exists('target_kpi_id', $arguments)) {
+                $kpi->target_kpi_id = $arguments['target_kpi_id'] !== null ? (int) $arguments['target_kpi_id'] : null;
+            }
+            if (array_key_exists('target_direction', $arguments) && $arguments['target_direction'] !== null) {
+                $kpi->target_direction = $arguments['target_direction'];
+            }
+            if (array_key_exists('green_pct', $arguments)) {
+                $kpi->green_pct = $arguments['green_pct'] !== null ? (int) $arguments['green_pct'] : null;
+            }
+            if (array_key_exists('yellow_pct', $arguments)) {
+                $kpi->yellow_pct = $arguments['yellow_pct'] !== null ? (int) $arguments['yellow_pct'] : null;
             }
 
             // A value KPI must keep a usable definition; a group needs none.

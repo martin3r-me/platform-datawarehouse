@@ -33,6 +33,11 @@ class DatawarehouseKpi extends Model
         'cached_value',
         'cached_at',
         'display_range',
+        'target_value',
+        'target_kpi_id',
+        'target_direction',
+        'green_pct',
+        'yellow_pct',
         'cached_comparison_value',
         'status',
         'last_error',
@@ -41,6 +46,9 @@ class DatawarehouseKpi extends Model
     protected $casts = [
         'definition'   => 'array',
         'is_group'     => 'boolean',
+        'target_value'            => 'decimal:4',
+        'green_pct'               => 'integer',
+        'yellow_pct'              => 'integer',
         'cached_value'            => 'decimal:4',
         'cached_comparison_value' => 'decimal:4',
         'cached_at'               => 'datetime',
@@ -88,6 +96,62 @@ class DatawarehouseKpi extends Model
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_kpi_id')->orderBy('position');
+    }
+
+    /**
+     * Reference KPI used as the Ampel target (e.g. the Plan KPI), if any.
+     */
+    public function targetKpi(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'target_kpi_id');
+    }
+
+    /**
+     * Resolve the Ampel target: a fixed target_value, or the current cached
+     * value of the referenced target KPI. Null when no target is configured.
+     */
+    public function resolveTarget(): ?float
+    {
+        if ($this->target_value !== null) {
+            return (float) $this->target_value;
+        }
+        if ($this->target_kpi_id) {
+            $ref = self::find($this->target_kpi_id);
+            return $ref && $ref->cached_value !== null ? (float) $ref->cached_value : null;
+        }
+        return null;
+    }
+
+    /**
+     * Evaluate the RAG (Ampel) status against the configured target.
+     * Returns ['status' => green|yellow|red, 'achievement' => %, 'target' => float]
+     * or null when no target is configured / value is missing.
+     */
+    public function ampel(): ?array
+    {
+        $target = $this->resolveTarget();
+        if ($target === null || (float) $target === 0.0 || $this->cached_value === null) {
+            return null;
+        }
+
+        $value = (float) $this->cached_value;
+        $green = $this->green_pct ?? 100;
+        $yellow = $this->yellow_pct ?? 80;
+
+        if (($this->target_direction ?? 'higher_better') === 'lower_better') {
+            // Lower is better (costs, cancellations): being under target is good.
+            $achievement = $value == 0.0 ? 100.0 : ($target / $value) * 100;
+        } else {
+            $achievement = ($value / $target) * 100;
+        }
+
+        $status = $achievement >= $green ? 'green' : ($achievement >= $yellow ? 'yellow' : 'red');
+
+        return [
+            'status'      => $status,
+            'achievement' => round($achievement, 1),
+            'target'      => $target,
+        ];
     }
 
     public function dashboards(): BelongsToMany

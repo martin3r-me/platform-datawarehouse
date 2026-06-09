@@ -102,6 +102,13 @@
                         @endif
                         <span class="text-[11px] text-gray-400">{{ collect([$kpi->displayRangeLabel(), $kpi->unit])->filter()->implode(' · ') }}</span>
                     </div>
+                    @php $ampel = $kpi->ampel(); @endphp
+                    @if($ampel)
+                        <div class="mt-3 inline-flex items-center gap-2 px-2.5 py-1 rounded-full {{ $ampel['status'] === 'green' ? 'bg-green-50 text-green-700' : ($ampel['status'] === 'yellow' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700') }}">
+                            <span class="w-2 h-2 rounded-full {{ $ampel['status'] === 'green' ? 'bg-green-500' : ($ampel['status'] === 'yellow' ? 'bg-amber-400' : 'bg-red-500') }}"></span>
+                            <span class="text-[12px] font-medium tabular-nums">{{ number_format($ampel['achievement'], 0, ',', '.') }}% vom Ziel ({{ number_format($ampel['target'], $kpi->decimals ?? 0, ',', '.') }} {{ $kpi->unit }})</span>
+                        </div>
+                    @endif
                 </div>
             </div>
             @endunless

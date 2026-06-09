@@ -100,6 +100,7 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
                 'position'                => (int)$k->position,
                 'parent_kpi_id'           => $k->parent_kpi_id !== null ? (int)$k->parent_kpi_id : null,
                 'is_group'                => (bool)$k->is_group,
+                'ampel'                   => $k->ampel(),
                 'display_range'           => $k->display_range,
                 'display_range_label'     => $k->displayRangeLabel(),
                 'cached_value'            => $k->cached_value !== null ? (float)$k->cached_value : null,

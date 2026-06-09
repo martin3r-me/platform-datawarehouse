@@ -10,6 +10,7 @@ use Platform\Core\Tools\Concerns\HasStandardizedWriteOperations;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Services\KpiDefinitionValidator;
 use Platform\Datawarehouse\Tools\Concerns\ResolvesDwhTeam;
+use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiAmpel;
 use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiHierarchy;
 
 class CreateKpiTool implements ToolContract, ToolMetadataContract
@@ -17,6 +18,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
     use HasStandardizedWriteOperations;
     use ResolvesDwhTeam;
     use ValidatesKpiHierarchy;
+    use ValidatesKpiAmpel;
 
     public function getName(): string
     {
@@ -43,6 +45,11 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'position'      => ['type' => 'integer', 'description' => 'Optional: Sortierposition.'],
                 'parent_kpi_id' => ['type' => 'integer', 'description' => 'Optional: ID eines Eltern-KPI für die Drill-down-Hierarchie (z. B. "RR" als Eltern von "2500"). null/weglassen = Top-Level-KPI.'],
                 'is_group'      => ['type' => 'boolean', 'description' => 'Optional: true = reiner Navigations-Ordner (gruppiert nur Kind-KPIs, hat keinen eigenen Wert). definition ist dann nicht erforderlich. Default false.'],
+                'target_value'     => ['type' => ['number', 'null'], 'description' => 'Optional: fixer Zielwert für die Ampel.'],
+                'target_kpi_id'    => ['type' => ['integer', 'null'], 'description' => 'Optional: Referenz-KPI als Ziel (z. B. Plan-KPI) → Ampel rechnet Ist/Plan. Alternativ zu target_value.'],
+                'target_direction' => ['type' => 'string', 'enum' => ['higher_better', 'lower_better'], 'description' => 'Optional: Richtung der Ampel. higher_better (Umsatz/AE) oder lower_better (Kosten/Storno). Default higher_better.'],
+                'green_pct'        => ['type' => 'integer', 'description' => 'Optional: Zielerreichung in %, ab der grün gilt (Default 100).'],
+                'yellow_pct'       => ['type' => 'integer', 'description' => 'Optional: Zielerreichung in %, ab der gelb gilt (darunter rot; Default 80).'],
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
@@ -105,6 +112,10 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('VALIDATION_ERROR', $error);
             }
 
+            if ($error = $this->validateAmpelArgs($arguments, $teamId)) {
+                return ToolResult::error('VALIDATION_ERROR', $error);
+            }
+
             $kpi = DatawarehouseKpi::create([
                 'team_id'       => $teamId,
                 'user_id'       => $context->user->id,
@@ -118,6 +129,11 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'position'      => isset($arguments['position']) ? (int)$arguments['position'] : 0,
                 'parent_kpi_id' => $parentKpiId,
                 'is_group'      => $isGroup,
+                'target_value'     => isset($arguments['target_value']) && $arguments['target_value'] !== null ? (float) $arguments['target_value'] : null,
+                'target_kpi_id'    => !empty($arguments['target_kpi_id']) ? (int) $arguments['target_kpi_id'] : null,
+                'target_direction' => $arguments['target_direction'] ?? 'higher_better',
+                'green_pct'        => isset($arguments['green_pct']) ? (int) $arguments['green_pct'] : null,
+                'yellow_pct'       => isset($arguments['yellow_pct']) ? (int) $arguments['yellow_pct'] : null,
                 'definition'    => $definition,
                 'display_range' => $displayRange,
                 'status'        => 'active',

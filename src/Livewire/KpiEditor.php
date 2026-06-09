@@ -20,6 +20,13 @@ class KpiEditor extends Component
     public ?int $parentKpiId = null;
     public bool $isGroup = false;
 
+    // Ampel / thresholds
+    public ?string $targetValue = null;
+    public ?int $targetKpiId = null;
+    public string $targetDirection = 'higher_better';
+    public ?int $greenPct = 100;
+    public ?int $yellowPct = 80;
+
     // Step 4: Meta
     public string $name = '';
     public ?string $description = null;
@@ -63,6 +70,11 @@ class KpiEditor extends Component
             $this->kpiId = $kpi->id;
             $this->parentKpiId = $kpi->parent_kpi_id;
             $this->isGroup = (bool) $kpi->is_group;
+            $this->targetValue = $kpi->target_value !== null ? (string) (float) $kpi->target_value : null;
+            $this->targetKpiId = $kpi->target_kpi_id;
+            $this->targetDirection = $kpi->target_direction ?: 'higher_better';
+            $this->greenPct = $kpi->green_pct;
+            $this->yellowPct = $kpi->yellow_pct;
             $this->name = $kpi->name;
             $this->description = $kpi->description;
             $this->icon = $kpi->icon;
@@ -473,6 +485,11 @@ class KpiEditor extends Component
             'decimals'      => $this->decimals,
             'parent_kpi_id' => $this->parentKpiId ?: null,
             'is_group'      => $this->isGroup,
+            'target_value'     => ($this->targetValue !== null && $this->targetValue !== '') ? (float) str_replace(',', '.', $this->targetValue) : null,
+            'target_kpi_id'    => $this->targetKpiId ?: null,
+            'target_direction' => $this->targetDirection ?: 'higher_better',
+            'green_pct'        => $this->greenPct !== null && $this->greenPct !== '' ? (int) $this->greenPct : null,
+            'yellow_pct'       => $this->yellowPct !== null && $this->yellowPct !== '' ? (int) $this->yellowPct : null,
             'definition'    => $definition,
             'display_range' => (!$this->isGroup && $this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null,
             'status'        => 'active',

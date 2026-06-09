@@ -69,6 +69,12 @@ class GetKpiTool implements ToolContract, ToolMetadataContract
                 'position'                => (int)$kpi->position,
                 'parent_kpi_id'           => $kpi->parent_kpi_id !== null ? (int)$kpi->parent_kpi_id : null,
                 'is_group'                => (bool)$kpi->is_group,
+                'target_value'            => $kpi->target_value !== null ? (float)$kpi->target_value : null,
+                'target_kpi_id'           => $kpi->target_kpi_id !== null ? (int)$kpi->target_kpi_id : null,
+                'target_direction'        => $kpi->target_direction,
+                'green_pct'               => $kpi->green_pct !== null ? (int)$kpi->green_pct : null,
+                'yellow_pct'              => $kpi->yellow_pct !== null ? (int)$kpi->yellow_pct : null,
+                'ampel'                   => $kpi->ampel(),
                 'children'                => $kpi->children()->get()->map(fn (DatawarehouseKpi $c) => [
                     'id'           => $c->id,
                     'name'         => $c->name,

@@ -88,6 +88,13 @@
                                         </span>
                                     @endif
                                 </div>
+                                @php $ampel = $kpi->ampel(); @endphp
+                                @if($ampel)
+                                    <div class="flex items-center gap-1.5 mt-1.5">
+                                        <span class="w-2 h-2 rounded-full {{ $ampel['status'] === 'green' ? 'bg-green-500' : ($ampel['status'] === 'yellow' ? 'bg-amber-400' : 'bg-red-500') }}"></span>
+                                        <span class="text-[11px] tabular-nums {{ $ampel['status'] === 'green' ? 'text-green-700' : ($ampel['status'] === 'yellow' ? 'text-amber-700' : 'text-red-700') }}">{{ number_format($ampel['achievement'], 0, ',', '.') }}% vom Ziel</span>
+                                    </div>
+                                @endif
                             </a>
 
                             @if($kpi->status === 'draft')

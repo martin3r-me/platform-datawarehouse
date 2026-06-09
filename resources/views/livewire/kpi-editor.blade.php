@@ -565,6 +565,51 @@
                                 <p class="text-[11px] text-gray-400 mt-1">Ordnet diese {{ $isGroup ? 'Gruppe' : 'Kennzahl' }} unter einem Ordner/einer Kennzahl ein (Drill-down in der Sidebar).</p>
                             </div>
 
+                            @unless($isGroup)
+                            {{-- Ampel / Zielwert --}}
+                            <div class="pt-4 border-t border-gray-100">
+                                <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-2">Ampel / Zielwert</div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Fixer Zielwert</label>
+                                        <input type="text" wire:model.live="targetValue" placeholder="z. B. 100000"
+                                            class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-gray-500 mb-1">oder Referenz-KPI (z. B. Plan)</label>
+                                        <select wire:model.live="targetKpiId"
+                                            class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]">
+                                            <option value="">— kein —</option>
+                                            @foreach($this->availableParents as $p)
+                                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Richtung</label>
+                                        <select wire:model.live="targetDirection"
+                                            class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]">
+                                            <option value="higher_better">Höher ist besser (Umsatz/AE)</option>
+                                            <option value="lower_better">Niedriger ist besser (Kosten/Storno)</option>
+                                        </select>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Grün ab %</label>
+                                            <input type="number" wire:model.live="greenPct" placeholder="100"
+                                                class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Gelb ab %</label>
+                                            <input type="number" wire:model.live="yellowPct" placeholder="80"
+                                                class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-gray-400 mt-2">Zielerreichung = Wert / Ziel. Ab „Grün %" grün, ab „Gelb %" gelb, darunter rot. Leer lassen, um keine Ampel zu zeigen.</p>
+                            </div>
+                            @endunless
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-500 mb-1">Icon</label>
