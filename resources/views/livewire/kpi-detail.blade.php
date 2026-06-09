@@ -173,7 +173,7 @@
                 <section class="bg-white rounded-lg border border-gray-200" wire:key="breakdown-{{ $kpi->id }}">
                     <div class="px-4 py-3 border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">Zeitliche Aufschl&uuml;sselung</h3>
-                        <p class="text-[11px] text-gray-400 mt-0.5">Aggregiert &uuml;ber die Datumsspalte &middot; {{ $kpi->displayRangeLabel() ?: 'Gesamt' }}@if($hasDetail) &middot; Klicke einen Monat f&uuml;r die Kostenstellen@endif</p>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Aggregiert &uuml;ber die Datumsspalte &middot; {{ $kpi->displayRangeLabel() ?: 'Gesamt' }}{{ $hasDetail ? ' · Klicke einen Monat für die Kostenstellen' : '' }}</p>
                     </div>
 
                     <div class="p-4 space-y-6" x-data="{ sel: null }">
