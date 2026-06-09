@@ -43,6 +43,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'decimals'      => ['type' => 'integer'],
                 'position'      => ['type' => 'integer'],
                 'parent_kpi_id' => ['type' => ['integer', 'null'], 'description' => 'Optional: Eltern-KPI für die Drill-down-Hierarchie setzen. null = zum Top-Level lösen. Selbst-/Zyklusbezüge werden abgelehnt.'],
+                'is_group'      => ['type' => 'boolean', 'description' => 'Optional: zu Navigations-Ordner machen (true) oder zurück zu Wert-KPI (false). Bei false muss eine gültige definition vorhanden/mitgesendet sein.'],
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
@@ -103,6 +104,19 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 $kpi->parent_kpi_id = $parentKpiId;
             }
 
+            if (array_key_exists('is_group', $arguments)) {
+                $kpi->is_group = (bool) $arguments['is_group'];
+            }
+
+            // A value KPI must keep a usable definition; a group needs none.
+            if (!$kpi->is_group) {
+                $def = $kpi->definition ?? [];
+                $hasAgg = !empty($def['aggregations'] ?? []) || !empty($def['aggregation'] ?? []);
+                if (empty($def['streams'] ?? []) || !$hasAgg) {
+                    return ToolResult::error('VALIDATION_ERROR', 'Eine Nicht-Gruppe braucht eine gültige definition (streams + aggregations). Sende definition mit oder setze is_group=true.');
+                }
+            }
+
             $definitionChanged = false;
             if (array_key_exists('definition', $arguments)) {
                 $definition = $arguments['definition'];
@@ -128,6 +142,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'id'                 => $kpi->id,
                 'name'               => $kpi->name,
                 'parent_kpi_id'      => $kpi->parent_kpi_id !== null ? (int) $kpi->parent_kpi_id : null,
+                'is_group'           => (bool) $kpi->is_group,
                 'display_range'      => $kpi->display_range,
                 'status'             => $kpi->status,
                 'team_id'            => $kpi->team_id,

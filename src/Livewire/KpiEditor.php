@@ -16,6 +16,10 @@ class KpiEditor extends Component
     public ?int $kpiId = null;
     public int $step = 1;
 
+    // Hierarchy / grouping
+    public ?int $parentKpiId = null;
+    public bool $isGroup = false;
+
     // Step 4: Meta
     public string $name = '';
     public ?string $description = null;
@@ -57,6 +61,8 @@ class KpiEditor extends Component
             abort_unless($kpi->team_id === $user->currentTeam->id, 403);
 
             $this->kpiId = $kpi->id;
+            $this->parentKpiId = $kpi->parent_kpi_id;
+            $this->isGroup = (bool) $kpi->is_group;
             $this->name = $kpi->name;
             $this->description = $kpi->description;
             $this->icon = $kpi->icon;
@@ -104,6 +110,12 @@ class KpiEditor extends Component
 
     public function nextStep(): void
     {
+        // A group is a pure folder — skip the data-source/aggregation steps
+        // and jump straight to naming.
+        if ($this->isGroup) {
+            $this->step = 4;
+            return;
+        }
         if ($this->step === 1 && empty($this->selectedStreams)) {
             return;
         }
@@ -131,6 +143,9 @@ class KpiEditor extends Component
 
     private function maxReachableStep(): int
     {
+        if ($this->isGroup) {
+            return 4;
+        }
         if (empty($this->selectedStreams)) {
             return 1;
         }
@@ -420,29 +435,32 @@ class KpiEditor extends Component
         $user = Auth::user();
         $team = $user->currentTeam;
 
-        $aggregations = $this->normalizedAggregationTerms();
+        if ($this->isGroup) {
+            // A folder/group has no aggregation and no own value.
+            $definition = [];
+        } else {
+            $aggregations = $this->normalizedAggregationTerms();
 
-        $definition = [
-            'streams'       => $this->selectedStreams,
-            'aggregations'  => $aggregations,
-            // Mirror the first term to the legacy `aggregation` key so an
-            // older deployment that still reads it keeps working.
-            'aggregation'   => $aggregations[0] ?? null,
-            'filters'       => array_values(array_filter($this->filters, fn($f) => !empty($f['column']))),
-            'snapshot_mode' => 'latest',
-        ];
-
-        if ($this->calendarEnabled && $this->calDateColumn) {
-            $calFilters = [
-                'date_column'        => $this->calDateColumn,
-                'date_stream_alias'  => $this->calDateStreamAlias,
-                'conditions'         => array_values(array_filter(
-                    $this->calendarConditions,
-                    fn($c) => !empty($c['column']) && $c['value'] !== '',
-                )),
+            $definition = [
+                'streams'       => $this->selectedStreams,
+                'aggregations'  => $aggregations,
+                // Mirror the first term to the legacy `aggregation` key so an
+                // older deployment that still reads it keeps working.
+                'aggregation'   => $aggregations[0] ?? null,
+                'filters'       => array_values(array_filter($this->filters, fn($f) => !empty($f['column']))),
+                'snapshot_mode' => 'latest',
             ];
 
-            $definition['calendar_filters'] = $calFilters;
+            if ($this->calendarEnabled && $this->calDateColumn) {
+                $definition['calendar_filters'] = [
+                    'date_column'       => $this->calDateColumn,
+                    'date_stream_alias' => $this->calDateStreamAlias,
+                    'conditions'        => array_values(array_filter(
+                        $this->calendarConditions,
+                        fn($c) => !empty($c['column']) && $c['value'] !== '',
+                    )),
+                ];
+            }
         }
 
         $data = [
@@ -453,8 +471,10 @@ class KpiEditor extends Component
             'unit'          => $this->unit ?: null,
             'format'        => $this->format,
             'decimals'      => $this->decimals,
+            'parent_kpi_id' => $this->parentKpiId ?: null,
+            'is_group'      => $this->isGroup,
             'definition'    => $definition,
-            'display_range' => ($this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null,
+            'display_range' => (!$this->isGroup && $this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null,
             'status'        => 'active',
         ];
 
@@ -480,6 +500,33 @@ class KpiEditor extends Component
     }
 
     // --- Computed Properties ---
+
+    #[Computed]
+    public function availableParents(): \Illuminate\Support\Collection
+    {
+        $team = Auth::user()->currentTeam;
+
+        $query = DatawarehouseKpi::forTeam($team->id)->orderBy('name');
+
+        // Exclude self and own descendants to prevent hierarchy cycles.
+        if ($this->kpiId) {
+            $exclude = $this->descendantIds($this->kpiId);
+            $exclude[] = $this->kpiId;
+            $query->whereNotIn('id', $exclude);
+        }
+
+        return $query->get(['id', 'name', 'is_group']);
+    }
+
+    private function descendantIds(int $id): array
+    {
+        $ids = [];
+        foreach (DatawarehouseKpi::where('parent_kpi_id', $id)->pluck('id') as $childId) {
+            $ids[] = (int) $childId;
+            $ids = array_merge($ids, $this->descendantIds((int) $childId));
+        }
+        return $ids;
+    }
 
     #[Computed]
     public function availableBaseStreams(): \Illuminate\Support\Collection
@@ -591,6 +638,7 @@ class KpiEditor extends Component
 
         $kpi = new DatawarehouseKpi();
         $kpi->team_id = $team->id;
+        $kpi->is_group = $this->isGroup;
         $kpi->definition = $definition;
         $kpi->display_range = ($this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null;
 

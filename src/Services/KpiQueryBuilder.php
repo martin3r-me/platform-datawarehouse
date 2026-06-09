@@ -68,6 +68,10 @@ class KpiQueryBuilder
      */
     public function execute(DatawarehouseKpi $kpi): ?float
     {
+        if ($kpi->is_group) {
+            return null;
+        }
+
         $definition = $kpi->definition;
 
         if (empty($definition['streams'] ?? []) || empty($this->extractAggregationTerms($definition))) {
@@ -251,6 +255,10 @@ class KpiQueryBuilder
      */
     public function executeAndCache(DatawarehouseKpi $kpi, string $trigger = 'pull_refresh'): ?float
     {
+        if ($kpi->is_group) {
+            return null;
+        }
+
         try {
             $displayRange = $kpi->display_range;
             $value = null;
@@ -300,6 +308,10 @@ class KpiQueryBuilder
      */
     public function getValue(DatawarehouseKpi $kpi): ?float
     {
+        if ($kpi->is_group) {
+            return null;
+        }
+
         if ($kpi->isCacheValid()) {
             return $kpi->cached_value !== null ? (float) $kpi->cached_value : null;
         }

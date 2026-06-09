@@ -28,6 +28,7 @@ class DatawarehouseKpi extends Model
         'decimals',
         'position',
         'parent_kpi_id',
+        'is_group',
         'definition',
         'cached_value',
         'cached_at',
@@ -39,6 +40,7 @@ class DatawarehouseKpi extends Model
 
     protected $casts = [
         'definition'   => 'array',
+        'is_group'     => 'boolean',
         'cached_value'            => 'decimal:4',
         'cached_comparison_value' => 'decimal:4',
         'cached_at'               => 'datetime',

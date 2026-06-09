@@ -55,6 +55,24 @@
 
             {{-- Step 1: Datenquellen --}}
             @if($step === 1)
+                {{-- Ordner / Gruppe --}}
+                <section class="bg-white rounded-lg border border-gray-200 mb-4">
+                    <label class="flex items-start gap-3 p-4 cursor-pointer">
+                        <input type="checkbox" wire:model.live="isGroup" class="mt-0.5 rounded border-gray-300 text-[#166EE1] focus:ring-[#166EE1]">
+                        <span>
+                            <span class="block text-[13px] font-medium text-gray-900">Als Ordner / Gruppe anlegen</span>
+                            <span class="block text-[11px] text-gray-400 mt-0.5">Bündelt nur andere Kennzahlen (Drill-down), hat keinen eigenen Wert. Keine Datenquelle nötig — klicke direkt auf „Weiter".</span>
+                        </span>
+                    </label>
+                </section>
+
+                @if($isGroup)
+                    <section class="bg-white rounded-lg border border-gray-200">
+                        <div class="p-4 text-[13px] text-gray-600">
+                            Ordner brauchen keine Datenquelle und keine Berechnung. Weiter mit <span class="font-medium">„Weiter"</span> zu Name &amp; Einordnung.
+                        </div>
+                    </section>
+                @else
                 <section class="bg-white rounded-lg border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200">
                         <h3 class="text-sm font-semibold text-gray-900">Datenquellen</h3>
@@ -137,6 +155,7 @@
                         @endif
                     </div>
                 </section>
+                @endif
             @endif
 
             {{-- Step 2: Berechnung --}}
@@ -533,6 +552,19 @@
                                 @enderror
                             </div>
 
+                            {{-- Hierarchie / Einordnung --}}
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Übergeordnet (Ordner / Kennzahl)</label>
+                                <select wire:model.live="parentKpiId"
+                                    class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]">
+                                    <option value="">— kein (oberste Ebene) —</option>
+                                    @foreach($this->availableParents as $p)
+                                        <option value="{{ $p->id }}">{{ $p->is_group ? '📁 ' : '' }}{{ $p->name }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[11px] text-gray-400 mt-1">Ordnet diese {{ $isGroup ? 'Gruppe' : 'Kennzahl' }} unter einem Ordner/einer Kennzahl ein (Drill-down in der Sidebar).</p>
+                            </div>
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-500 mb-1">Icon</label>
@@ -645,7 +677,7 @@
                     @endphp
                     <button
                         wire:click="nextStep"
-                        @if(($step === 1 && empty($selectedStreams)) || ($step === 2 && !$hasCompleteTerm)) disabled @endif
+                        @if(!$isGroup && (($step === 1 && empty($selectedStreams)) || ($step === 2 && !$hasCompleteTerm))) disabled @endif
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Weiter

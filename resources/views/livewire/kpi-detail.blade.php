@@ -78,6 +78,7 @@
             @endif
 
             {{-- Main Value Tile --}}
+            @unless($kpi->is_group)
             <div class="flex justify-center">
                 <div class="w-full max-w-sm bg-white rounded-lg border border-gray-200 p-6 text-center">
                     <div class="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center mx-auto mb-3">
@@ -103,6 +104,7 @@
                     </div>
                 </div>
             </div>
+            @endunless
 
             {{-- Bestandteile (Drill-down zu Child-KPIs) --}}
             @if($this->children->isNotEmpty())
@@ -334,6 +336,7 @@
             </section>
 
             {{-- Definition Info --}}
+            @unless($kpi->is_group)
             <section class="bg-white rounded-lg border border-gray-200">
                 <div class="px-4 py-3 border-b border-gray-200">
                     <h3 class="text-sm font-semibold text-gray-900">Definition</h3>
@@ -411,6 +414,7 @@
                     </div>
                 </div>
             </section>
+            @endunless
         </div>
 
         {{-- Delete KPI Modal --}}

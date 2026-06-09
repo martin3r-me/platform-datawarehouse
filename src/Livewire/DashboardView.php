@@ -46,7 +46,7 @@ class DashboardView extends Component
         $builder = new KpiQueryBuilder();
         $refreshed = 0;
         foreach ($kpis as $kpi) {
-            if ($kpi->status !== 'draft' && !$kpi->isCacheValid() && $refreshed < 5) {
+            if (!$kpi->is_group && $kpi->status !== 'draft' && !$kpi->isCacheValid() && $refreshed < 5) {
                 try {
                     $builder->executeAndCache($kpi);
                     $refreshed++;

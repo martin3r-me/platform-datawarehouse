@@ -42,6 +42,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'decimals'      => ['type' => 'integer', 'description' => 'Optional: Anzahl Nachkommastellen.'],
                 'position'      => ['type' => 'integer', 'description' => 'Optional: Sortierposition.'],
                 'parent_kpi_id' => ['type' => 'integer', 'description' => 'Optional: ID eines Eltern-KPI für die Drill-down-Hierarchie (z. B. "RR" als Eltern von "2500"). null/weglassen = Top-Level-KPI.'],
+                'is_group'      => ['type' => 'boolean', 'description' => 'Optional: true = reiner Navigations-Ordner (gruppiert nur Kind-KPIs, hat keinen eigenen Wert). definition ist dann nicht erforderlich. Default false.'],
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
@@ -49,11 +50,11 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 ],
                 'definition'    => [
                     'type' => 'object',
-                    'description' => 'KPI-Definition (ERFORDERLICH). Wird gegen Whitelists validiert. Mindestens: { streams: [{stream_id, alias: "s0"}], aggregations: [{function: SUM, column: "betrag", stream_alias: "s0"}] }.',
+                    'description' => 'KPI-Definition (erforderlich, außer bei is_group=true). Wird gegen Whitelists validiert. Mindestens: { streams: [{stream_id, alias: "s0"}], aggregations: [{function: SUM, column: "betrag", stream_alias: "s0"}] }.',
                     'additionalProperties' => true,
                 ],
             ],
-            'required' => ['name', 'definition'],
+            'required' => ['name'],
         ]);
     }
 
@@ -75,14 +76,21 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('VALIDATION_ERROR', 'name ist erforderlich.');
             }
 
-            $definition = $arguments['definition'] ?? null;
-            if (!is_array($definition)) {
-                return ToolResult::error('VALIDATION_ERROR', 'definition muss ein Objekt sein.');
-            }
+            $isGroup = (bool) ($arguments['is_group'] ?? false);
 
-            $validator = app(KpiDefinitionValidator::class);
-            if ($error = $validator->validate($definition, $teamId)) {
-                return ToolResult::error('VALIDATION_ERROR', $error);
+            if ($isGroup) {
+                // A group is a pure navigation folder — no aggregation, no value.
+                $definition = [];
+            } else {
+                $definition = $arguments['definition'] ?? null;
+                if (!is_array($definition)) {
+                    return ToolResult::error('VALIDATION_ERROR', 'definition muss ein Objekt sein (oder is_group=true für einen Ordner).');
+                }
+
+                $validator = app(KpiDefinitionValidator::class);
+                if ($error = $validator->validate($definition, $teamId)) {
+                    return ToolResult::error('VALIDATION_ERROR', $error);
+                }
             }
 
             $displayRange = $arguments['display_range'] ?? null;
@@ -109,6 +117,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'decimals'      => isset($arguments['decimals']) ? (int)$arguments['decimals'] : 0,
                 'position'      => isset($arguments['position']) ? (int)$arguments['position'] : 0,
                 'parent_kpi_id' => $parentKpiId,
+                'is_group'      => $isGroup,
                 'definition'    => $definition,
                 'display_range' => $displayRange,
                 'status'        => 'active',
@@ -119,6 +128,7 @@ class CreateKpiTool implements ToolContract, ToolMetadataContract
                 'uuid'          => $kpi->uuid,
                 'name'          => $kpi->name,
                 'parent_kpi_id' => $kpi->parent_kpi_id !== null ? (int) $kpi->parent_kpi_id : null,
+                'is_group'      => (bool) $kpi->is_group,
                 'display_range' => $kpi->display_range,
                 'status'        => $kpi->status,
                 'team_id'       => $kpi->team_id,

@@ -66,6 +66,17 @@ class ExecuteKpiTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('ACCESS_DENIED', 'Du hast keinen Zugriff auf diesen KPI.');
             }
 
+            if ($kpi->is_group) {
+                return ToolResult::success([
+                    'id'      => $kpi->id,
+                    'range'   => null,
+                    'value'   => null,
+                    'cached'  => false,
+                    'team_id' => $kpi->team_id,
+                    'message' => 'Dies ist ein Gruppen-/Ordner-KPI ohne eigenen Wert.',
+                ]);
+            }
+
             $range = $arguments['range'] ?? null;
             if ($range !== null && !array_key_exists($range, KpiQueryBuilder::DATE_RANGE_MAP)) {
                 return ToolResult::error('VALIDATION_ERROR', 'Ungültiger range. Erlaubt: ' . implode(', ', array_keys(KpiQueryBuilder::DATE_RANGE_MAP)) . '.');

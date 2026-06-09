@@ -68,6 +68,7 @@ class GetKpiTool implements ToolContract, ToolMetadataContract
                 'decimals'                => (int)$kpi->decimals,
                 'position'                => (int)$kpi->position,
                 'parent_kpi_id'           => $kpi->parent_kpi_id !== null ? (int)$kpi->parent_kpi_id : null,
+                'is_group'                => (bool)$kpi->is_group,
                 'children'                => $kpi->children()->get()->map(fn (DatawarehouseKpi $c) => [
                     'id'           => $c->id,
                     'name'         => $c->name,
