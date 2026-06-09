@@ -98,6 +98,28 @@ class KpiDetail extends Component
             : null;
     }
 
+    /**
+     * Quarter + month breakdown for the time chart (empty without a date column).
+     */
+    #[Computed]
+    public function breakdown(): array
+    {
+        if (!$this->kpi->hasDateColumn()) {
+            return ['quarters' => [], 'months' => []];
+        }
+
+        $builder = new KpiQueryBuilder();
+
+        try {
+            return [
+                'quarters' => $builder->executeBreakdown($this->kpi, 'quarter'),
+                'months'   => $builder->executeBreakdown($this->kpi, 'month'),
+            ];
+        } catch (\Throwable) {
+            return ['quarters' => [], 'months' => []];
+        }
+    }
+
     #[Computed]
     public function snapshots()
     {

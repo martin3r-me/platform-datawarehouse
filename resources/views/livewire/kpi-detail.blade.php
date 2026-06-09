@@ -143,6 +143,79 @@
                 </section>
             @endif
 
+            {{-- Zeitliche Aufschlüsselung (animierte Säulen) --}}
+            @if(!empty($this->breakdown['months']))
+                @php
+                    $months = $this->breakdown['months'];
+                    $quarters = $this->breakdown['quarters'];
+                    $maxMonth = collect($months)->max('value') ?: 1;
+                    $maxQuarter = collect($quarters)->max('value') ?: 1;
+                    $compact = function ($v) {
+                        $a = abs($v);
+                        if ($a >= 1000000) return number_format($v / 1000000, 1, ',', '.') . ' Mio';
+                        if ($a >= 1000) return number_format($v / 1000, 0, ',', '.') . 'k';
+                        return number_format($v, 0, ',', '.');
+                    };
+                @endphp
+
+                @verbatim
+                <style>
+                    @keyframes dwhGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+                    @keyframes dwhGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+                    .dwh-bar-y { transform-origin: bottom; animation: dwhGrowY .7s cubic-bezier(.22,1,.36,1) both; }
+                    .dwh-bar-x { transform-origin: left;  animation: dwhGrowX .7s cubic-bezier(.22,1,.36,1) both; }
+                </style>
+                @endverbatim
+
+                <section class="bg-white rounded-lg border border-gray-200" wire:key="breakdown-{{ $kpi->id }}">
+                    <div class="px-4 py-3 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-900">Zeitliche Aufschl&uuml;sselung</h3>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Aggregiert &uuml;ber die Datumsspalte &middot; {{ $kpi->displayRangeLabel() ?: 'Gesamt' }}</p>
+                    </div>
+
+                    <div class="p-4 space-y-6">
+                        {{-- Monate: vertikale Säulen --}}
+                        <div>
+                            <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-3">Monate</div>
+                            <div class="flex items-end gap-1.5" style="height: 11rem;">
+                                @foreach($months as $i => $m)
+                                    @php $pct = $maxMonth > 0 ? max(2, round($m['value'] / $maxMonth * 100)) : 0; @endphp
+                                    <div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end">
+                                        <div class="text-[10px] text-gray-500 tabular-nums mb-1 whitespace-nowrap">{{ $compact($m['value']) }}</div>
+                                        <div class="w-full bg-[#166EE1] rounded-t dwh-bar-y"
+                                             style="height: {{ $pct }}%; animation-delay: {{ $i * 55 }}ms"
+                                             title="{{ $m['label'] }}: {{ number_format($m['value'], 2, ',', '.') }} {{ $kpi->unit }}"></div>
+                                        <div class="text-[10px] text-gray-500 mt-1.5">{{ $m['label'] }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Quartale: horizontale Balken --}}
+                        @if(!empty($quarters))
+                            <div class="pt-2 border-t border-gray-100">
+                                <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-3">Quartale</div>
+                                <div class="space-y-2">
+                                    @foreach($quarters as $i => $q)
+                                        @php $pct = $maxQuarter > 0 ? max(2, round($q['value'] / $maxQuarter * 100)) : 0; @endphp
+                                        <div class="flex items-center gap-3">
+                                            <span class="w-14 shrink-0 text-[12px] font-medium text-gray-700">{{ $q['label'] }}</span>
+                                            <div class="flex-1 h-5 rounded bg-gray-100 overflow-hidden">
+                                                <div class="h-full rounded bg-[#166EE1]/80 dwh-bar-x"
+                                                     style="width: {{ $pct }}%; animation-delay: {{ $i * 90 }}ms"></div>
+                                            </div>
+                                            <span class="w-32 shrink-0 text-right text-[12px] text-gray-900 tabular-nums">
+                                                {{ number_format($q['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </section>
+            @endif
+
             {{-- All Ranges Grid --}}
             @if($kpi->hasDateColumn())
                 <section class="bg-white rounded-lg border border-gray-200">

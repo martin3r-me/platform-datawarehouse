@@ -156,6 +156,73 @@ class KpiQueryBuilder
     }
 
     /**
+     * Aggregate the KPI grouped by calendar period (quarter or month) over its
+     * date column — the data behind the dynamic time breakdown chart. Returns an
+     * ordered list of ['period','label','value']; empty when the KPI has no date
+     * column. Respects the same snapshot/typ filters as the headline value.
+     *
+     * @param  string  $granularity  'quarter' or 'month'
+     */
+    public function executeBreakdown(DatawarehouseKpi $kpi, string $granularity): array
+    {
+        if (!$kpi->hasDateColumn()) {
+            return [];
+        }
+        if (!in_array($granularity, ['quarter', 'month'], true)) {
+            throw new \InvalidArgumentException('granularity muss "quarter" oder "month" sein.');
+        }
+
+        $definition = $kpi->definition;
+        if (empty($definition['streams'] ?? []) || empty($this->extractAggregationTerms($definition))) {
+            return [];
+        }
+
+        $cal = $definition['calendar_filters'] ?? [];
+        $dateColumn = $cal['date_column'] ?? null;
+        $dateAlias = $cal['date_stream_alias'] ?? ($definition['streams'][0]['alias'] ?? 's0');
+        if (!$dateColumn) {
+            return [];
+        }
+        $this->validateColumnName($dateColumn);
+        $this->validateAlias($dateAlias);
+
+        [$query, $resolvedStreams, $baseAlias] = $this->buildBaseQuery($kpi);
+        $aggSelect = $this->buildAggregationSelect($definition, $resolvedStreams, $baseAlias, $kpi->team_id);
+
+        $col = "{$dateAlias}.{$dateColumn}";
+        $periodExpr = $granularity === 'quarter' ? "QUARTER({$col})" : "MONTH({$col})";
+
+        $rows = $query
+            ->selectRaw("YEAR({$col}) as period_year, {$periodExpr} as period_num, {$aggSelect}")
+            ->groupBy(DB::raw("YEAR({$col})"), DB::raw($periodExpr))
+            ->orderBy('period_year')
+            ->orderBy('period_num')
+            ->get();
+
+        $monthAbbr = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+        $multiYear = $rows->pluck('period_year')->unique()->count() > 1;
+
+        return $rows->map(function ($r) use ($granularity, $monthAbbr, $multiYear) {
+            $year = (int) $r->period_year;
+            $num = (int) $r->period_num;
+
+            if ($granularity === 'quarter') {
+                $label = 'Q' . $num . ($multiYear ? " '" . substr((string) $year, 2) : '');
+                $period = $year . '-Q' . $num;
+            } else {
+                $label = ($monthAbbr[$num - 1] ?? (string) $num) . ($multiYear ? " '" . substr((string) $year, 2) : '');
+                $period = sprintf('%04d-%02d', $year, $num);
+            }
+
+            return [
+                'period' => $period,
+                'label'  => $label,
+                'value'  => $r->kpi_result !== null ? (float) $r->kpi_result : 0.0,
+            ];
+        })->all();
+    }
+
+    /**
      * Resolve the comparison period [start, end] for a given range.
      */
     public function resolveComparisonRange(string $range): ?array
