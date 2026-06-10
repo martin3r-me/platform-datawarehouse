@@ -160,6 +160,12 @@
                     $maxMonth = collect($months)->max('value') ?: 1;
                     $maxQuarter = collect($quarters)->max('value') ?: 1;
                     $hasDetail = !empty($this->monthlyDetail);
+                    $monthsByQuarter = [];
+                    foreach ($months as $mm) {
+                        $parts = explode('-', $mm['period']);
+                        $qn = intdiv(((int) ($parts[1] ?? 1)) - 1, 3) + 1;
+                        $monthsByQuarter[($parts[0] ?? '') . '-Q' . $qn][] = $mm;
+                    }
                     $compact = function ($v) {
                         $a = abs($v);
                         if ($a >= 1000000) return number_format($v / 1000000, 1, ',', '.') . ' Mio';
@@ -183,7 +189,7 @@
                         <p class="text-[11px] text-gray-400 mt-0.5">Aggregiert &uuml;ber die Datumsspalte &middot; {{ $kpi->displayRangeLabel() ?: 'Gesamt' }}{{ $hasDetail ? ' · Klicke einen Monat für die Kostenstellen' : '' }}</p>
                     </div>
 
-                    <div class="p-4 space-y-6" x-data="{ sel: null }">
+                    <div class="p-4 space-y-6" x-data="{ sel: null, selQ: null }">
                         {{-- Monate: vertikale Säulen --}}
                         <div>
                             <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-3">Monate</div>
@@ -234,16 +240,37 @@
                                 <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-3">Quartale</div>
                                 <div class="space-y-2">
                                     @foreach($quarters as $i => $q)
-                                        @php $pct = $maxQuarter > 0 ? max(2, round($q['value'] / $maxQuarter * 100)) : 0; @endphp
-                                        <div class="flex items-center gap-3">
-                                            <span class="w-14 shrink-0 text-[12px] font-medium text-gray-700">{{ $q['label'] }}</span>
-                                            <div class="flex-1 h-5 rounded bg-gray-100 overflow-hidden">
-                                                <div class="h-full rounded bg-[#166EE1]/80 dwh-bar-x"
-                                                     style="width: {{ $pct }}%; animation-delay: {{ $i * 90 }}ms"></div>
+                                        @php
+                                            $pct = $maxQuarter > 0 ? max(2, round($q['value'] / $maxQuarter * 100)) : 0;
+                                            $qMonths = $monthsByQuarter[$q['period']] ?? [];
+                                        @endphp
+                                        <div>
+                                            <div class="flex items-center gap-3 cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50"
+                                                 :class="{ 'bg-blue-50': selQ === @js($q['period']) }"
+                                                 @click="selQ = (selQ === @js($q['period']) ? null : @js($q['period']))">
+                                                <span class="w-14 shrink-0 text-[12px] font-medium text-gray-700">{{ $q['label'] }}</span>
+                                                <div class="flex-1 h-5 rounded bg-gray-100 overflow-hidden">
+                                                    <div class="h-full rounded bg-[#166EE1]/80 dwh-bar-x"
+                                                         style="width: {{ $pct }}%; animation-delay: {{ $i * 90 }}ms"></div>
+                                                </div>
+                                                <span class="w-32 shrink-0 text-right text-[12px] text-gray-900 tabular-nums">
+                                                    {{ number_format($q['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif
+                                                </span>
                                             </div>
-                                            <span class="w-32 shrink-0 text-right text-[12px] text-gray-900 tabular-nums">
-                                                {{ number_format($q['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif
-                                            </span>
+                                            @if(!empty($qMonths))
+                                                <div x-show="selQ === @js($q['period'])" style="display:none" class="mt-2 ml-14 pl-3 border-l border-gray-200 space-y-1.5">
+                                                    @foreach($qMonths as $k => $qm)
+                                                        @php $mpct = $maxMonth > 0 ? max(1, round($qm['value'] / $maxMonth * 100)) : 0; @endphp
+                                                        <div class="flex items-center gap-3">
+                                                            <span class="w-10 shrink-0 text-[12px] text-gray-600">{{ $qm['label'] }}</span>
+                                                            <div class="flex-1 h-4 rounded bg-gray-100 overflow-hidden">
+                                                                <div class="h-full rounded bg-[#166EE1]/60 dwh-bar-x" style="width: {{ $mpct }}%; animation-delay: {{ $k * 60 }}ms"></div>
+                                                            </div>
+                                                            <span class="w-32 shrink-0 text-right text-[12px] text-gray-900 tabular-nums">{{ number_format($qm['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif</span>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>
