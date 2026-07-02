@@ -5,6 +5,7 @@ namespace Platform\Datawarehouse\Livewire;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\Auth;
+use Platform\Datawarehouse\Models\DatawarehouseDashboard;
 use Platform\Datawarehouse\Services\RkvForecastService;
 
 /**
@@ -31,6 +32,15 @@ class RkvDetail extends Component
         $user = Auth::user();
 
         return app(RkvForecastService::class)->compute($user->currentTeam->id, $user->id);
+    }
+
+    /** URL back to the RKV dashboard (the /dashboards/{id} entry). */
+    #[Computed]
+    public function backUrl(): string
+    {
+        $d = DatawarehouseDashboard::customViewFor(Auth::user()->currentTeam->id, 'rkv');
+
+        return $d ? route('datawarehouse.dashboard.view', $d) : route('datawarehouse.dashboard');
     }
 
     public function render()

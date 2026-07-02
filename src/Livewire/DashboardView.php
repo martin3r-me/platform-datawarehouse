@@ -38,6 +38,19 @@ class DashboardView extends Component
 
     public function render()
     {
+        // Custom view (e.g. RKV forecast): render the registered partial fed by
+        // its service, instead of the KPI-tile grid.
+        if ($this->dashboard->isCustomView() && ($viewCfg = $this->dashboard->viewConfig())) {
+            $user = Auth::user();
+            $viewData = app($viewCfg['service'])->compute($user->currentTeam->id, $user->id);
+
+            return view('datawarehouse::livewire.dashboard-view', [
+                'kpis'      => collect(),
+                'viewCfg'   => $viewCfg,
+                'viewData'  => $viewData,
+            ])->layout('platform::layouts.app');
+        }
+
         $kpis = $this->dashboard->kpis()
             ->whereIn('datawarehouse_kpis.status', ['active', 'draft', 'error'])
             ->get();
@@ -57,7 +70,9 @@ class DashboardView extends Component
         }
 
         return view('datawarehouse::livewire.dashboard-view', [
-            'kpis' => $kpis,
+            'kpis'     => $kpis,
+            'viewCfg'  => null,
+            'viewData' => null,
         ])->layout('platform::layouts.app');
     }
 }

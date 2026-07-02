@@ -3,7 +3,9 @@
 namespace Platform\Datawarehouse\Livewire;
 
 use Livewire\Component;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\Auth;
+use Platform\Datawarehouse\Models\DatawarehouseDashboard;
 use Platform\Datawarehouse\Models\DatawarehouseRkvConfig;
 
 /**
@@ -116,7 +118,16 @@ class RkvEditor extends Component
         ]);
 
         session()->flash('rkv_saved', true);
-        $this->redirect(route('datawarehouse.rkv'), navigate: true);
+        $this->redirect($this->backUrl(), navigate: true);
+    }
+
+    /** URL back to the RKV dashboard (the /dashboards/{id} entry). */
+    #[Computed]
+    public function backUrl(): string
+    {
+        $d = DatawarehouseDashboard::customViewFor(Auth::user()->currentTeam->id, 'rkv');
+
+        return $d ? route('datawarehouse.dashboard.view', $d) : route('datawarehouse.dashboard');
     }
 
     /** @return array<int,array>|null null on validation error */

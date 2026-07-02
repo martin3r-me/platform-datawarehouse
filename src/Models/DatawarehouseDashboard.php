@@ -21,6 +21,7 @@ class DatawarehouseDashboard extends Model
         'name',
         'description',
         'icon',
+        'view_type',
         'position',
     ];
 
@@ -62,5 +63,46 @@ class DatawarehouseDashboard extends Model
     public function scopeForTeam($query, int $teamId)
     {
         return $query->where('team_id', $teamId);
+    }
+
+    // --- Custom views ---
+
+    /** A dashboard that renders a registered custom view instead of the KPI grid. */
+    public function isCustomView(): bool
+    {
+        return !empty($this->view_type);
+    }
+
+    /** Registry entry for this dashboard's view_type (or null). */
+    public function viewConfig(): ?array
+    {
+        if (!$this->isCustomView()) {
+            return null;
+        }
+        return config('datawarehouse.dashboard_views.' . $this->view_type);
+    }
+
+    public static function customViewFor(int $teamId, string $viewType): ?self
+    {
+        return static::forTeam($teamId)->where('view_type', $viewType)->first();
+    }
+
+    /**
+     * Ensure a dashboard row exists for every registered custom view of the team,
+     * so they appear in the dashboards list under /dashboards/{id}. Idempotent.
+     */
+    public static function ensureRegisteredViews(int $teamId, ?int $userId = null): void
+    {
+        foreach ((array) config('datawarehouse.dashboard_views', []) as $type => $def) {
+            static::firstOrCreate(
+                ['team_id' => $teamId, 'view_type' => $type],
+                [
+                    'user_id'  => $userId,
+                    'name'     => $def['label'] ?? ucfirst($type),
+                    'icon'     => $def['icon'] ?? 'squares-2x2',
+                    'position' => $def['position'] ?? 900,
+                ],
+            );
+        }
     }
 }

@@ -28,32 +28,45 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <a
-                        href="{{ route('datawarehouse.dashboard.edit', $dashboard) }}"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors"
-                    >
-                        @svg('heroicon-o-pencil', 'w-4 h-4')
-                        Bearbeiten
-                    </a>
-                    <button
-                        wire:click="confirmDeleteDashboard"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-200 text-red-600 text-[13px] font-medium hover:bg-red-50 transition-colors"
-                    >
-                        @svg('heroicon-o-trash', 'w-4 h-4')
-                        Löschen
-                    </button>
+                    @if($viewCfg)
+                        <a
+                            href="{{ route($viewCfg['edit_route']) }}" wire:navigate
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            @svg('heroicon-o-pencil', 'w-4 h-4')
+                            Bearbeiten
+                        </a>
+                    @else
+                        <a
+                            href="{{ route('datawarehouse.dashboard.edit', $dashboard) }}"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            @svg('heroicon-o-pencil', 'w-4 h-4')
+                            Bearbeiten
+                        </a>
+                        <button
+                            wire:click="confirmDeleteDashboard"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-200 text-red-600 text-[13px] font-medium hover:bg-red-50 transition-colors"
+                        >
+                            @svg('heroicon-o-trash', 'w-4 h-4')
+                            Löschen
+                        </button>
+                    @endif
                 </div>
             </div>
 
+            @if($viewCfg)
+                @include($viewCfg['partial'], ['data' => $viewData, 'dashboard' => $dashboard])
+            @else
             {{-- KPI Grid --}}
             @if($kpis->isNotEmpty())
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     @foreach($kpis as $kpi)
                         <div class="relative {{ $kpi->status === 'error' ? 'ring-2 ring-red-300 rounded-lg' : '' }}">
-                            <a href="{{ route('datawarehouse.kpi.detail', $kpi) }}" class="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+                            <a href="{{ route('datawarehouse.kpi.detail', $kpi) }}" class="block bg-white rounded-lg border border-gray-200 p-3.5 hover:shadow-sm transition-shadow">
                                 <div class="flex items-start justify-between mb-2">
                                     <div class="flex items-center gap-2 min-w-0">
-                                        <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+                                        <div class="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
                                             @svg('heroicon-o-' . $kpi->icon, 'w-4 h-4 text-[#166EE1]')
                                         </div>
                                         <div class="min-w-0">
@@ -64,7 +77,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="text-2xl font-bold text-gray-900 tabular-nums">
+                                <div class="text-xl font-bold text-gray-900 tabular-nums">
                                     {{ $kpi->cached_value !== null ? number_format((float) $kpi->cached_value, $kpi->decimals ?? 0, ',', '.') : '—' }}
                                 </div>
                                 <div class="flex items-center gap-2 mt-1">
@@ -120,6 +133,7 @@
                         Kennzahlen zuordnen
                     </a>
                 </div>
+            @endif
             @endif
         </div>
     </x-ui-page-container>

@@ -7,7 +7,7 @@
         @php
             $breadcrumbs = [
                 ['label' => 'Datawarehouse', 'href' => route('datawarehouse.dashboard'), 'icon' => 'circle-stack'],
-                ['label' => 'RKV Rückvergütung 2026', 'href' => route('datawarehouse.rkv')],
+                ['label' => 'RKV Rückvergütung 2026', 'href' => $this->backUrl],
                 ['label' => 'Bearbeiten'],
             ];
         @endphp
@@ -27,7 +27,7 @@
                     <p class="text-[12px] text-gray-500 mt-0.5">Staffeln, WKZ, Wachstumsfaktor und Vorjahreswerte. Wirkt sofort auf die Hochrechnung.</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a href="{{ route('datawarehouse.rkv') }}" wire:navigate class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">Abbrechen</a>
+                    <a href="{{ $this->backUrl }}" wire:navigate class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">Abbrechen</a>
                     <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">Speichern</button>
                 </div>
             </div>
@@ -133,7 +133,7 @@
 
             <div class="flex items-center gap-2">
                 <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">Speichern</button>
-                <a href="{{ route('datawarehouse.rkv') }}" wire:navigate class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">Abbrechen</a>
+                <a href="{{ $this->backUrl }}" wire:navigate class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors">Abbrechen</a>
             </div>
         </form>
     </x-ui-page-container>

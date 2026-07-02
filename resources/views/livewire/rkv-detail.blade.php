@@ -17,7 +17,7 @@
         @php
             $breadcrumbs = [
                 ['label' => 'Datawarehouse', 'href' => route('datawarehouse.dashboard'), 'icon' => 'circle-stack'],
-                ['label' => 'RKV Rückvergütung 2026', 'href' => route('datawarehouse.rkv')],
+                ['label' => 'RKV Rückvergütung 2026', 'href' => $this->backUrl],
                 ['label' => $segLabel],
             ];
         @endphp
@@ -90,7 +90,7 @@
                     @endforeach
                 </div>
 
-                <a href="{{ route('datawarehouse.rkv') }}" wire:navigate class="inline-flex items-center gap-1.5 text-[13px] text-[#166EE1] hover:underline">← zurück zur Übersicht</a>
+                <a href="{{ $this->backUrl }}" wire:navigate class="inline-flex items-center gap-1.5 text-[13px] text-[#166EE1] hover:underline">← zurück zur Übersicht</a>
             @else
                 @php
                     $d = $M[$seg];
@@ -233,7 +233,7 @@
                     </table>
                 </section>
 
-                <a href="{{ route('datawarehouse.rkv') }}" wire:navigate class="inline-flex items-center gap-1.5 text-[13px] text-[#166EE1] hover:underline">← zurück zur Übersicht</a>
+                <a href="{{ $this->backUrl }}" wire:navigate class="inline-flex items-center gap-1.5 text-[13px] text-[#166EE1] hover:underline">← zurück zur Übersicht</a>
             @endif
         </div>
     </x-ui-page-container>

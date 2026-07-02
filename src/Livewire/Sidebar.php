@@ -48,6 +48,10 @@ class Sidebar extends Component
         }
         $kpiTree = $this->buildKpiTree($byParent, 0);
 
+        // Ensure registered custom views (e.g. RKV) exist as dashboards for this
+        // team, so they appear in the list under /dashboards/{id} like the rest.
+        DatawarehouseDashboard::ensureRegisteredViews($teamId, $user->id);
+
         $dashboards = DatawarehouseDashboard::forTeam($teamId)
             ->orderBy('position')
             ->get();
