@@ -160,6 +160,16 @@
                     $maxMonth = collect($months)->max('value') ?: 1;
                     $maxQuarter = collect($quarters)->max('value') ?: 1;
                     $hasDetail = !empty($this->monthlyDetail);
+                    // Stable color per child (drives the stacked bars + legend).
+                    // Keyed by child name so a month's stack colors it consistently
+                    // regardless of that month's value-sorted order.
+                    $palette = ['#166EE1', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444', '#14B8A6', '#EC4899', '#64748B'];
+                    $childColors = [];
+                    if ($hasDetail) {
+                        foreach ($this->children->sortBy('position')->values() as $ci => $child) {
+                            $childColors[$child->name] = $palette[$ci % count($palette)];
+                        }
+                    }
                     $monthsByQuarter = [];
                     foreach ($months as $mm) {
                         $parts = explode('-', $mm['period']);
@@ -193,6 +203,16 @@
                         {{-- Monate: vertikale Säulen --}}
                         <div>
                             <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-3">Monate</div>
+                            @if($hasDetail)
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
+                                    @foreach($childColors as $cn => $col)
+                                        <span class="inline-flex items-center gap-1.5 text-[11px] text-gray-600">
+                                            <span class="w-2.5 h-2.5 rounded-sm" style="background: {{ $col }}"></span>
+                                            {{ $cn }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
                             <div class="flex items-end gap-1.5" style="height: 11rem;">
                                 @foreach($months as $i => $m)
                                     @php $pct = $maxMonth > 0 ? max(2, round($m['value'] / $maxMonth * 100)) : 0; @endphp
@@ -200,9 +220,24 @@
                                          :class="{ 'bg-blue-50 rounded-lg': sel === @js($m['period']) }"
                                          @if($hasDetail) @click="sel = (sel === @js($m['period']) ? null : @js($m['period']))" @endif>
                                         <div class="text-[10px] text-gray-500 tabular-nums mb-1 whitespace-nowrap">{{ $compact($m['value']) }}</div>
-                                        <div class="w-full bg-[#166EE1] rounded-t dwh-bar-y"
-                                             style="height: {{ $pct }}%; animation-delay: {{ $i * 55 }}ms"
-                                             title="{{ $m['label'] }}: {{ number_format($m['value'], 2, ',', '.') }} {{ $kpi->unit }}"></div>
+                                        @if($hasDetail)
+                                            @php $byName = collect($this->monthlyDetail[$m['period']]['items'] ?? [])->keyBy('name'); @endphp
+                                            <div class="w-full rounded-t overflow-hidden dwh-bar-y flex flex-col-reverse"
+                                                 style="height: {{ $pct }}%; animation-delay: {{ $i * 55 }}ms"
+                                                 title="{{ $m['label'] }}: {{ number_format($m['value'], 2, ',', '.') }} {{ $kpi->unit }}">
+                                                @foreach($childColors as $cn => $col)
+                                                    @php $cv = (float) ($byName[$cn]['value'] ?? 0); @endphp
+                                                    @if($cv > 0)
+                                                        <div style="flex: {{ $cv }} {{ $cv }} 0%; background: {{ $col }}"
+                                                             title="{{ $cn }}: {{ number_format($cv, 2, ',', '.') }} {{ $kpi->unit }}"></div>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="w-full bg-[#166EE1] rounded-t dwh-bar-y"
+                                                 style="height: {{ $pct }}%; animation-delay: {{ $i * 55 }}ms"
+                                                 title="{{ $m['label'] }}: {{ number_format($m['value'], 2, ',', '.') }} {{ $kpi->unit }}"></div>
+                                        @endif
                                         <div class="text-[10px] text-gray-500 mt-1.5">{{ $m['label'] }}</div>
                                     </div>
                                 @endforeach
