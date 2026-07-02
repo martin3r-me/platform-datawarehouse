@@ -109,7 +109,7 @@ class StreamUpload extends Component
                 }, $row->getCells());
 
                 if ($i === 1) {
-                    $headers = array_map(fn ($h) => trim((string) $h), $cells);
+                    $headers = $this->dedupeHeaders($cells);
                     continue;
                 }
                 if ($this->isEmptyRow($cells)) {
@@ -126,23 +126,16 @@ class StreamUpload extends Component
 
     private function parseCsv(string $path): array
     {
+        // Read raw (no header mode) so duplicate header names don't throw and
+        // can be de-duplicated positionally like the xlsx path.
         $delimiter = $this->detectDelimiter($path);
-
-        if (class_exists(\League\Csv\Reader::class)) {
-            $csv = \League\Csv\Reader::createFromPath($path, 'r');
-            $csv->setDelimiter($delimiter);
-            $csv->setHeaderOffset(0);
-            return array_values(iterator_to_array($csv->getRecords(), false));
-        }
-
-        // Fallback ohne league/csv
         $rows = [];
         $headers = [];
         if (($h = fopen($path, 'r')) !== false) {
             $i = 0;
             while (($cells = fgetcsv($h, 0, $delimiter)) !== false) {
                 if ($i === 0) {
-                    $headers = array_map(fn ($x) => trim((string) $x), $cells);
+                    $headers = $this->dedupeHeaders($cells);
                 } elseif (!$this->isEmptyRow($cells)) {
                     $rows[] = $this->combine($headers, $cells);
                 }
@@ -151,6 +144,32 @@ class StreamUpload extends Component
             fclose($h);
         }
         return $rows;
+    }
+
+    /**
+     * Trim headers and make duplicates unique positionally (e.g. two "Betrieb"
+     * columns → "Betrieb", "Betrieb_2") so no column silently overwrites another.
+     */
+    private function dedupeHeaders(array $headers): array
+    {
+        $seen = [];
+        $out = [];
+        foreach ($headers as $h) {
+            $h = trim((string) $h);
+            if ($h === '') {
+                $out[] = '';
+                continue;
+            }
+            $key = mb_strtolower($h);
+            if (isset($seen[$key])) {
+                $seen[$key]++;
+                $out[] = $h . '_' . $seen[$key];
+            } else {
+                $seen[$key] = 1;
+                $out[] = $h;
+            }
+        }
+        return $out;
     }
 
     private function detectDelimiter(string $path): string
