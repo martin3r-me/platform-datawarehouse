@@ -63,7 +63,7 @@ class DwhOverviewTool implements ToolContract, ToolMetadataContract
                         'key_fields' => ['id', 'stream_id', 'source_key', 'column_name', 'label', 'data_type', 'precision', 'scale', 'unit', 'is_indexed', 'is_nullable', 'transform', 'position', 'is_active'],
                         'note' => 'Definiert eine Spalte des dynamisch erzeugten Tables. source_key = Pfad im Payload (z.B. "data.invoice.total"), column_name = sanitierter MySQL-Identifier.',
                         'data_types' => ['string', 'integer', 'decimal', 'boolean', 'date', 'datetime', 'text', 'json'],
-                        'transforms' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean'],
+                        'transforms' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean', 'excel_serial_date', 'parse_german_date'],
                     ],
                     'connections' => [
                         'model' => 'Platform\\Datawarehouse\\Models\\DatawarehouseConnection',

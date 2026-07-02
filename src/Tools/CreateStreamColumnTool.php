@@ -83,7 +83,7 @@ class CreateStreamColumnTool implements ToolContract, ToolMetadataContract
                 ],
                 'transform' => [
                     'type' => 'string',
-                    'enum' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean'],
+                    'enum' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean', 'excel_serial_date', 'parse_german_date'],
                     'description' => 'Optional: Transformation beim Import.',
                 ],
                 'position' => [
@@ -149,7 +149,7 @@ class CreateStreamColumnTool implements ToolContract, ToolMetadataContract
                 : ((int)DatawarehouseStreamColumn::query()->where('stream_id', $stream->id)->max('position') + 1);
 
             $transform = $arguments['transform'] ?? null;
-            $allowedTransforms = ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean'];
+            $allowedTransforms = ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean', 'excel_serial_date', 'parse_german_date'];
             if ($transform !== null && !in_array($transform, $allowedTransforms, true)) {
                 return ToolResult::error('VALIDATION_ERROR', 'Ungültiger transform-Wert.');
             }

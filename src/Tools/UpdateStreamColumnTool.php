@@ -53,7 +53,7 @@ class UpdateStreamColumnTool implements ToolContract, ToolMetadataContract
                 'default_value' => ['type' => 'string', 'description' => 'Optional.'],
                 'transform' => [
                     'type' => 'string',
-                    'enum' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean'],
+                    'enum' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean', 'excel_serial_date', 'parse_german_date'],
                     'description' => 'Optional: Transformation beim Import.',
                 ],
                 'position'      => ['type' => 'integer', 'description' => 'Optional: Sortierposition.'],

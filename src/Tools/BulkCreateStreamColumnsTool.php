@@ -62,7 +62,7 @@ class BulkCreateStreamColumnsTool implements ToolContract, ToolMetadataContract
                             'default_value' => ['type' => 'string'],
                             'transform'     => [
                                 'type' => 'string',
-                                'enum' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean'],
+                                'enum' => ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean', 'excel_serial_date', 'parse_german_date'],
                             ],
                             'position'      => ['type' => 'integer'],
                         ],
@@ -109,7 +109,7 @@ class BulkCreateStreamColumnsTool implements ToolContract, ToolMetadataContract
             }
 
             $allowedTypes = ['string', 'integer', 'decimal', 'boolean', 'date', 'datetime', 'text', 'json'];
-            $allowedTransforms = ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean'];
+            $allowedTransforms = ['trim', 'url_decode', 'cast_german_decimal', 'lowercase', 'uppercase', 'strip_tags', 'to_integer', 'to_boolean', 'excel_serial_date', 'parse_german_date'];
 
             $existingNames = DatawarehouseStreamColumn::query()
                 ->where('stream_id', $stream->id)
