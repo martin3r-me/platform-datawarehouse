@@ -338,6 +338,8 @@
                                                 <option value="strip_tags">Strip Tags</option>
                                                 <option value="to_integer">To Integer</option>
                                                 <option value="to_boolean">To Boolean</option>
+                                                <option value="excel_serial_date">Excel-Datum (Serial → Datum)</option>
+                                                <option value="parse_german_date">Dt. Datum (TT.MM.JJJJ → Datum)</option>
                                             </select>
                                         </div>
                                     </div>

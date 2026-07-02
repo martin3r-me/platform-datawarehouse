@@ -119,8 +119,53 @@ class DatawarehouseStreamColumn extends Model
             'strip_tags'           => is_string($value) ? strip_tags($value) : $value,
             'to_integer'           => (int) $value,
             'to_boolean'           => filter_var($value, FILTER_VALIDATE_BOOLEAN),
+            'excel_serial_date'    => $this->excelSerialToDate($value),
+            'parse_german_date'    => $this->parseGermanDate($value),
             default                => $value,
         };
+    }
+
+    /**
+     * Convert an Excel serial date number (e.g. 46056) to `Y-m-d`.
+     * Excel's epoch is 1899-12-30 (accounts for the 1900 leap-year bug);
+     * serial 25569 == 1970-01-01. Non-numeric input is returned unchanged.
+     */
+    protected function excelSerialToDate(mixed $value): mixed
+    {
+        if ($value === null || $value === '' || !is_numeric($value)) {
+            return $value === '' ? null : $value;
+        }
+
+        $days = (int) floor((float) $value);
+        $ts = ($days - 25569) * 86400;
+
+        return gmdate('Y-m-d', $ts);
+    }
+
+    /**
+     * Parse a German date/datetime string (`d.m.Y` or `d.m.Y H:i:s`) into
+     * `Y-m-d` (+ ` H:i:s` when a time part is present). Input that doesn't
+     * match is returned unchanged.
+     */
+    protected function parseGermanDate(mixed $value): mixed
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+        $v = trim($value);
+        if ($v === '') {
+            return null;
+        }
+
+        if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/', $v, $m)) {
+            $date = sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
+            if (isset($m[4])) {
+                return $date . sprintf(' %02d:%02d:%02d', (int) $m[4], (int) $m[5], (int) ($m[6] ?? 0));
+            }
+            return $date;
+        }
+
+        return $v;
     }
 
     protected function castGermanDecimal(mixed $value): float

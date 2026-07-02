@@ -132,6 +132,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\ResumeStreamTool());
             $registry->register(new \Platform\Datawarehouse\Tools\ArchiveStreamTool());
             $registry->register(new \Platform\Datawarehouse\Tools\PreviewStreamDataTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\IngestStreamTool());
 
             // Stream Columns (CRUD + Bulk)
             $registry->register(new \Platform\Datawarehouse\Tools\ListStreamColumnsTool());

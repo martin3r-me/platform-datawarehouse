@@ -63,6 +63,13 @@
                     <span>Pull starten</span>
                 </x-ui-button>
             @endif
+            @if($stream->isManual())
+                <a href="{{ route('datawarehouse.stream.upload', $stream) }}" wire:navigate
+                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
+                    @svg('heroicon-o-arrow-up-tray', 'w-4 h-4')
+                    <span>Datei hochladen</span>
+                </a>
+            @endif
             <x-ui-button variant="ghost" size="sm" wire:click="openResetModal">
                 @svg('heroicon-o-arrow-path', 'w-4 h-4')
                 <span>Re-Onboarding</span>

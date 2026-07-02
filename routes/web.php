@@ -9,11 +9,13 @@ use Platform\Datawarehouse\Livewire\KpiEditor;
 use Platform\Datawarehouse\Livewire\Providers;
 use Platform\Datawarehouse\Livewire\StreamDetail;
 use Platform\Datawarehouse\Livewire\StreamOnboarding;
+use Platform\Datawarehouse\Livewire\StreamUpload;
 
 Route::get('/', Dashboard::class)->name('datawarehouse.dashboard');
 Route::get('/connections', Connections::class)->name('datawarehouse.connections');
 Route::get('/providers', Providers::class)->name('datawarehouse.providers');
 Route::get('/streams/{stream}/onboarding', StreamOnboarding::class)->name('datawarehouse.stream.onboarding');
+Route::get('/streams/{stream}/upload', StreamUpload::class)->name('datawarehouse.stream.upload');
 Route::get('/streams/{stream}', StreamDetail::class)->name('datawarehouse.stream.detail');
 Route::get('/kpis/create', KpiEditor::class)->name('datawarehouse.kpi.create');
 Route::get('/kpis/{kpi}', KpiDetail::class)->name('datawarehouse.kpi.detail');
