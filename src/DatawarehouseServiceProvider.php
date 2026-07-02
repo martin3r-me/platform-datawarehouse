@@ -146,6 +146,10 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\CreateStreamRelationTool());
             $registry->register(new \Platform\Datawarehouse\Tools\DeleteStreamRelationTool());
 
+            // Stream Exclusions (bereinigte KPI-Basis, konfigurierbar)
+            $registry->register(new \Platform\Datawarehouse\Tools\GetStreamExclusionsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\SetStreamExclusionsTool());
+
             // Connections (CRUD + Test)
             $registry->register(new \Platform\Datawarehouse\Tools\ListConnectionsTool());
             $registry->register(new \Platform\Datawarehouse\Tools\GetConnectionTool());

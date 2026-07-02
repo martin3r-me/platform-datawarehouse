@@ -532,6 +532,40 @@
                             @endif
                         </div>
                     </section>
+
+                    {{-- Ausschlüsse (bereinigte KPI-Basis) --}}
+                    <section class="bg-white rounded-lg border border-gray-200">
+                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900">Ausschl&uuml;sse</h3>
+                                <p class="text-[11px] text-gray-400 mt-0.5">Zeilen, die eine dieser Regeln erf&uuml;llen, z&auml;hlen in KEINER KPI dieses Streams mit („bereinigt").</p>
+                            </div>
+                            @if(!empty($stream->exclusions))
+                                <span class="text-[12px] text-gray-500 shrink-0 tabular-nums">{{ number_format($this->excludedRowCount, 0, ',', '.') }} Positionen ausgeschlossen</span>
+                            @endif
+                        </div>
+                        <div class="p-4">
+                            @if(empty($stream->exclusions))
+                                <div class="text-[13px] text-gray-500">Keine Ausschluss-Regeln definiert — alle Positionen z&auml;hlen mit.</div>
+                            @else
+                                <div class="space-y-1.5">
+                                    @foreach($stream->exclusions as $rule)
+                                        <div class="flex items-center gap-2 text-[13px] flex-wrap">
+                                            <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-[11px]">{{ $rule['field'] ?? '?' }}</span>
+                                            <span class="text-gray-400 text-[11px]">{{ $rule['op'] ?? '' }}</span>
+                                            @isset($rule['value'])
+                                                <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-mono text-[11px]">{{ $rule['value'] }}</span>
+                                            @endisset
+                                            @isset($rule['note'])
+                                                <span class="text-[11px] text-gray-400">&mdash; {{ $rule['note'] }}</span>
+                                            @endisset
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <p class="text-[11px] text-gray-400 mt-3">Regelpflege per LLM-Tool <span class="font-mono">datawarehouse.stream_exclusions.PUT</span> (wirkt sofort, kein Re-Import).</p>
+                            @endif
+                        </div>
+                    </section>
                 </div>
             @endif
 

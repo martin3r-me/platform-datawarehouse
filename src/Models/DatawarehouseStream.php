@@ -48,6 +48,7 @@ class DatawarehouseStream extends Model
         'last_run_at',
         'last_status',
         'metadata',
+        'exclusions',
     ];
 
     protected $casts = [
@@ -55,6 +56,7 @@ class DatawarehouseStream extends Model
         'pull_config'      => 'array',
         'last_cursor'      => 'array',
         'metadata'         => 'array',
+        'exclusions'       => 'array',
         'table_created'    => 'boolean',
         'change_detection' => 'boolean',
         'soft_delete'      => 'boolean',

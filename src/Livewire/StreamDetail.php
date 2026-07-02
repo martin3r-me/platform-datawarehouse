@@ -2,6 +2,7 @@
 
 namespace Platform\Datawarehouse\Livewire;
 
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
@@ -499,6 +500,54 @@ class StreamDetail extends Component
             $relation->delete();
             $this->flash = "Relation '{$label}' wurde gelöscht.";
         }
+    }
+
+    /**
+     * Count of rows in the latest snapshot that are excluded by the stream's
+     * exclusion rules (rows matching ANY rule). For UI transparency: shows how
+     * many positions do NOT count in the KPIs.
+     */
+    #[Computed]
+    public function excludedRowCount(): int
+    {
+        $rules = $this->stream->exclusions ?? [];
+        if (empty($rules) || !$this->stream->table_created) {
+            return 0;
+        }
+        $table = $this->stream->getDynamicTableName();
+        if (!Schema::hasTable($table)) {
+            return 0;
+        }
+
+        $q = DB::table($table);
+        if ($this->stream->isSnapshotStrategy() && Schema::hasColumn($table, '_snapshot_at')) {
+            $q->where('_snapshot_at', '=', DB::table($table)->selectRaw('MAX(_snapshot_at)'));
+        }
+
+        $q->where(function ($outer) use ($rules) {
+            foreach ($rules as $r) {
+                $f = $r['field'] ?? null;
+                $op = strtolower((string) ($r['op'] ?? 'contains'));
+                $v = $r['value'] ?? null;
+                if (!is_string($f) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $f)) {
+                    continue;
+                }
+                $outer->orWhere(function ($w) use ($f, $op, $v) {
+                    match ($op) {
+                        'contains' => $w->where($f, 'LIKE', '%' . $v . '%'),
+                        'equals'   => $w->where($f, '=', $v),
+                        'lt'       => $w->where($f, '<', $v),
+                        'lte'      => $w->where($f, '<=', $v),
+                        'gt'       => $w->where($f, '>', $v),
+                        'gte'      => $w->where($f, '>=', $v),
+                        'empty'    => $w->where(fn ($x) => $x->whereNull($f)->orWhere($f, '=', '')),
+                        default    => $w->whereRaw('1=0'),
+                    };
+                });
+            }
+        });
+
+        return (int) $q->count();
     }
 
     public function render()

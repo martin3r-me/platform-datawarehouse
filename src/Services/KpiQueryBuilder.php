@@ -453,12 +453,66 @@ class KpiQueryBuilder
             }
         }
 
+        // Apply per-stream exclusion rules — rows matching ANY rule are removed
+        // from every KPI calc on that stream ("bereinigt"). Rules are data
+        // (DatawarehouseStream.exclusions), editable via tool/UI — not hardcoded.
+        foreach ($resolvedStreams as $alias => $stream) {
+            $this->applyStreamExclusions($query, $alias, $stream->exclusions ?? []);
+        }
+
         // Apply filters
         foreach ($filters as $filter) {
             $this->applyFilter($query, $filter, $resolvedStreams, $teamId);
         }
 
         return [$query, $resolvedStreams, $baseAlias];
+    }
+
+    /**
+     * Exclude rows matching ANY of the stream's exclusion rules. Implemented as
+     * keep-conditions (a row survives only if it matches NONE of the rules) and
+     * NULL-safe: a NULL field never "matches" a contains/equals/compare rule,
+     * so such rows are kept. Malformed/unknown rules are ignored (never drop
+     * everything). Supported ops: contains, equals, lt, lte, gt, gte, empty.
+     */
+    private function applyStreamExclusions(Builder $query, string $alias, array $rules): void
+    {
+        foreach ($rules as $rule) {
+            $field = $rule['field'] ?? null;
+            $op = strtolower((string) ($rule['op'] ?? 'contains'));
+            $value = $rule['value'] ?? null;
+
+            if (!is_string($field) || !preg_match(self::COLUMN_REGEX, $field)) {
+                continue;
+            }
+            $col = $alias . '.' . $field;
+
+            switch ($op) {
+                case 'contains':
+                    $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, 'NOT LIKE', '%' . $value . '%'));
+                    break;
+                case 'equals':
+                    $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, '!=', $value));
+                    break;
+                case 'lt':   // exclude col < value  → keep col >= value
+                    $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, '>=', $value));
+                    break;
+                case 'lte':
+                    $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, '>', $value));
+                    break;
+                case 'gt':
+                    $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, '<=', $value));
+                    break;
+                case 'gte':
+                    $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, '<', $value));
+                    break;
+                case 'empty':
+                    $query->whereNotNull($col)->where($col, '!=', '');
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
     /**
