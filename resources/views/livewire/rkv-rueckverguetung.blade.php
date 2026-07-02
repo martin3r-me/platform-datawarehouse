@@ -154,6 +154,38 @@
                 </div>
             </section>
 
+            {{-- Forecast-Parameter --}}
+            <section class="bg-white rounded-lg border border-gray-200">
+                <div class="px-4 py-3 border-b border-gray-200">
+                    <h3 class="text-sm font-semibold text-gray-900">Forecast-Parameter</h3>
+                    <p class="text-[11px] text-gray-400 mt-0.5">Wachstumsfaktor für Forecast-Monate ohne Pipeline-Daten. Pipeline-Daten (Streams) haben Vorrang.</p>
+                </div>
+                <div class="p-4">
+                    <form wire:submit.prevent="saveParams" class="flex flex-wrap items-end gap-4">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Wachstumsfaktor (Vorjahr × Faktor)</label>
+                            <input type="number" step="0.001" min="0" wire:model="factor"
+                                   class="w-40 px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px] tabular-nums focus:border-[#166EE1] focus:outline-none" />
+                            @error('factor') <div class="text-[11px] text-red-600 mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 mb-1">IST bis inkl. Monat</label>
+                            <input type="number" min="0" max="12" wire:model="istThroughMonth"
+                                   class="w-28 px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px] tabular-nums focus:border-[#166EE1] focus:outline-none" />
+                            @error('istThroughMonth') <div class="text-[11px] text-red-600 mt-1">{{ $message }}</div> @enderror
+                        </div>
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
+                            Speichern
+                        </button>
+                        @if($paramsSaved)
+                            <span class="text-[12px] text-emerald-600">✓ gespeichert — Zahlen aktualisiert</span>
+                        @endif
+                    </form>
+                    <p class="text-[11px] text-gray-400 mt-3">Staffeln, WKZ und Vorjahreswerte änderst Du per LLM-Tool <span class="font-mono">datawarehouse.rkv_config.PUT</span> (unten in den Tabellen sichtbar).</p>
+                </div>
+            </section>
+
             {{-- Staffeln --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {{-- Event Rent --}}
