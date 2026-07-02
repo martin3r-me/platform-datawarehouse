@@ -40,6 +40,10 @@
     {{-- Dashboards --}}
     <div x-show="!collapsed" class="px-2 mb-1">
         <div class="px-2 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 font-medium">Dashboards</div>
+        <a href="{{ route('datawarehouse.rkv') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
+            @svg('heroicon-o-banknotes', 'w-4 h-4')
+            <span class="truncate">RKV Rückvergütung</span>
+        </a>
         @foreach($dashboards as $dashboard)
             <a href="{{ route('datawarehouse.dashboard.view', $dashboard) }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
                 @svg('heroicon-o-' . $dashboard->icon, 'w-4 h-4')
@@ -49,15 +53,6 @@
         <a href="{{ route('datawarehouse.dashboard.create') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-500 hover:bg-[#2C3135] hover:text-gray-300 transition-colors">
             @svg('heroicon-o-plus', 'w-4 h-4')
             <span>Neues Dashboard</span>
-        </a>
-    </div>
-
-    {{-- Auswertungen --}}
-    <div x-show="!collapsed" class="px-2 mb-1">
-        <div class="px-2 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 font-medium">Auswertungen</div>
-        <a href="{{ route('datawarehouse.rkv') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
-            @svg('heroicon-o-banknotes', 'w-4 h-4')
-            <span>RKV Rückvergütung</span>
         </a>
     </div>
 
