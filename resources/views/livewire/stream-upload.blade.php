@@ -32,10 +32,10 @@
 
                 <div wire:loading wire:target="file" class="text-[12px] text-gray-500">Datei wird geladen&hellip;</div>
 
-                <button wire:click="upload" wire:loading.attr="disabled" wire:target="upload,file"
+                <button wire:click="importFile" wire:loading.attr="disabled" wire:target="importFile,file"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span wire:loading.remove wire:target="upload">Hochladen &amp; verarbeiten</span>
-                    <span wire:loading wire:target="upload">Verarbeite&hellip;</span>
+                    <span wire:loading.remove wire:target="importFile">Hochladen &amp; verarbeiten</span>
+                    <span wire:loading wire:target="importFile">Verarbeite&hellip;</span>
                 </button>
 
                 <p class="text-[11px] text-gray-400">

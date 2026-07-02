@@ -30,7 +30,7 @@ class StreamUpload extends Component
         $this->stream = $stream;
     }
 
-    public function upload(): void
+    public function importFile(): void
     {
         $this->flash = null;
         $this->error = null;
