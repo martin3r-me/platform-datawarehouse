@@ -114,7 +114,15 @@ class StreamImportService
         $mapped = [];
 
         foreach ($columnMap as $sourceKey => $column) {
-            $value = data_get($row, $sourceKey);
+            // Prefer an exact key match before falling back to data_get's
+            // dot-path resolution. Otherwise source keys that legitimately
+            // contain a dot (e.g. the header "Nr.") get split into segments
+            // ("Nr" + "") and silently resolve to null. data_get remains the
+            // fallback so genuinely nested payloads (e.g. "customer.name")
+            // still work.
+            $value = array_key_exists($sourceKey, $row)
+                ? $row[$sourceKey]
+                : data_get($row, $sourceKey);
             $value = $column->applyTransform($value);
 
             // Nested structures (arrays / stdClass) can't be bound to scalar
