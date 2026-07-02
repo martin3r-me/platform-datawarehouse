@@ -7,6 +7,7 @@ use Platform\Datawarehouse\Livewire\DashboardView;
 use Platform\Datawarehouse\Livewire\KpiDetail;
 use Platform\Datawarehouse\Livewire\KpiEditor;
 use Platform\Datawarehouse\Livewire\Providers;
+use Platform\Datawarehouse\Livewire\RkvRueckverguetung;
 use Platform\Datawarehouse\Livewire\StreamDetail;
 use Platform\Datawarehouse\Livewire\StreamOnboarding;
 use Platform\Datawarehouse\Livewire\StreamUpload;
@@ -23,3 +24,4 @@ Route::get('/kpis/{kpi}/edit', KpiEditor::class)->name('datawarehouse.kpi.edit')
 Route::get('/dashboards/create', DashboardEditor::class)->name('datawarehouse.dashboard.create');
 Route::get('/dashboards/{dashboard}/edit', DashboardEditor::class)->name('datawarehouse.dashboard.edit');
 Route::get('/dashboards/{dashboard}', DashboardView::class)->name('datawarehouse.dashboard.view');
+Route::get('/rkv', RkvRueckverguetung::class)->name('datawarehouse.rkv');

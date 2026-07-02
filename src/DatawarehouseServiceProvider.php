@@ -150,6 +150,10 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\GetStreamExclusionsTool());
             $registry->register(new \Platform\Datawarehouse\Tools\SetStreamExclusionsTool());
 
+            // RKV Rückvergütung (JRV-Staffeln/WKZ/Faktor/Vorjahr — konfigurierbar)
+            $registry->register(new \Platform\Datawarehouse\Tools\GetRkvConfigTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\SetRkvConfigTool());
+
             // Connections (CRUD + Test)
             $registry->register(new \Platform\Datawarehouse\Tools\ListConnectionsTool());
             $registry->register(new \Platform\Datawarehouse\Tools\GetConnectionTool());
