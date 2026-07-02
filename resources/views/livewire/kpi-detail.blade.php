@@ -285,8 +285,22 @@
                                                  @click="selQ = (selQ === @js($q['period']) ? null : @js($q['period']))">
                                                 <span class="w-14 shrink-0 text-[12px] font-medium text-gray-700">{{ $q['label'] }}</span>
                                                 <div class="flex-1 h-5 rounded bg-gray-100 overflow-hidden">
-                                                    <div class="h-full rounded bg-[#166EE1]/80 dwh-bar-x"
-                                                         style="width: {{ $pct }}%; animation-delay: {{ $i * 90 }}ms"></div>
+                                                    @if($hasDetail)
+                                                        @php $qByName = collect($this->quarterlyDetail[$q['period']]['items'] ?? [])->keyBy('name'); @endphp
+                                                        <div class="h-full rounded overflow-hidden dwh-bar-x flex"
+                                                             style="width: {{ $pct }}%; animation-delay: {{ $i * 90 }}ms">
+                                                            @foreach($childColors as $cn => $col)
+                                                                @php $qcv = (float) ($qByName[$cn]['value'] ?? 0); @endphp
+                                                                @if($qcv > 0)
+                                                                    <div style="flex: {{ $qcv }} {{ $qcv }} 0%; background: {{ $col }}"
+                                                                         title="{{ $cn }}: {{ number_format($qcv, 2, ',', '.') }} {{ $kpi->unit }}"></div>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="h-full rounded bg-[#166EE1]/80 dwh-bar-x"
+                                                             style="width: {{ $pct }}%; animation-delay: {{ $i * 90 }}ms"></div>
+                                                    @endif
                                                 </div>
                                                 <span class="w-32 shrink-0 text-right text-[12px] text-gray-900 tabular-nums">
                                                     {{ number_format($q['value'], 2, ',', '.') }}@if($kpi->unit)<span class="text-gray-400"> {{ $kpi->unit }}</span>@endif

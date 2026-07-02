@@ -176,6 +176,59 @@ class KpiDetail extends Component
         return $detail;
     }
 
+    /**
+     * Per-quarter breakdown by child KPIs — same shape as monthlyDetail but at
+     * quarter granularity. Drives the stacked quarter bars. Empty for leaf KPIs
+     * or KPIs without a date column.
+     *
+     * @return array<string, array{label: string, items: array<int, array{name: string, value: float}>}>
+     */
+    #[Computed]
+    public function quarterlyDetail(): array
+    {
+        if (!$this->kpi->hasDateColumn()) {
+            return [];
+        }
+
+        $children = $this->kpi->children()->get();
+        if ($children->isEmpty()) {
+            return [];
+        }
+
+        $quarters = $this->breakdown['quarters'] ?? [];
+        if (empty($quarters)) {
+            return [];
+        }
+
+        $builder = new KpiQueryBuilder();
+
+        $childMaps = [];
+        $order = [];
+        foreach ($children as $child) {
+            $order[] = $child->name;
+            $map = [];
+            try {
+                foreach ($builder->executeBreakdown($child, 'quarter') as $row) {
+                    $map[$row['period']] = $row['value'];
+                }
+            } catch (\Throwable) {
+                // child without a usable definition → leave empty (counts as 0)
+            }
+            $childMaps[$child->name] = $map;
+        }
+
+        $detail = [];
+        foreach ($quarters as $q) {
+            $items = [];
+            foreach ($order as $name) {
+                $items[] = ['name' => $name, 'value' => $childMaps[$name][$q['period']] ?? 0.0];
+            }
+            $detail[$q['period']] = ['label' => $q['label'], 'items' => $items];
+        }
+
+        return $detail;
+    }
+
     #[Computed]
     public function snapshots()
     {
