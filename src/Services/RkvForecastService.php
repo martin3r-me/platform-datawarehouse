@@ -46,6 +46,7 @@ class RkvForecastService
 
         return [
             'months' => array_slice(self::MONATE, 1),
+            'ist_through_month' => (int) ($cfg['ist_through_month'] ?? 6),
             'er' => [
                 'label'    => $cfg['er']['label'] ?? 'Event Rent',
                 'ist_sum'  => $er['istSum'],

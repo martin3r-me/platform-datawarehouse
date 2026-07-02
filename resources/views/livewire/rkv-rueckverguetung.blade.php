@@ -36,7 +36,7 @@
         </style>
         @endverbatim
 
-        <div class="space-y-6">
+        <div class="space-y-6" x-data="{ modal: null }">
             {{-- Header --}}
             <div>
                 <h1 class="text-lg font-semibold text-gray-900">RKV Rückvergütung 2026</h1>
@@ -45,27 +45,27 @@
 
             {{-- KPI-Kacheln --}}
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div @click="modal='er'" class="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
                     <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $ER_COLOR }}"></span>ER IST Jan–Jun</div>
                     <div class="text-xl font-semibold mt-1" style="color: {{ $ER_COLOR }}">{{ $eur($er['ist_sum']) }}</div>
                     <div class="text-[11px] text-gray-400 mt-0.5">aus Rechnungspositionen</div>
                 </div>
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div @click="modal='er'" class="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
                     <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $ER_COLOR }}"></span>ER Jahresprognose</div>
                     <div class="text-xl font-semibold mt-1" style="color: {{ $ER_COLOR }}">{{ $eur($er['prognose']) }}</div>
                     <div class="text-[11px] text-gray-400 mt-0.5">IST + Forecast</div>
                 </div>
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div @click="modal='ev'" class="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
                     <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $EV_COLOR }}"></span>EV IST Jan–Jun</div>
                     <div class="text-xl font-semibold mt-1" style="color: {{ $EV_COLOR }}">{{ $eur($ev['ist_sum']) }}</div>
                     <div class="text-[11px] text-gray-400 mt-0.5">aus Rechnungspositionen</div>
                 </div>
-                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div @click="modal='ev'" class="bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
                     <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $EV_COLOR }}"></span>EV Jahresprognose</div>
                     <div class="text-xl font-semibold mt-1" style="color: {{ $EV_COLOR }}">{{ $eur($ev['prognose']) }}</div>
                     <div class="text-[11px] text-gray-400 mt-0.5">IST + Forecast</div>
                 </div>
-                <div class="bg-emerald-50 rounded-lg border border-emerald-200 p-4">
+                <div @click="modal='jrv'" class="bg-emerald-50 rounded-lg border border-emerald-200 p-4 cursor-pointer hover:border-emerald-400 hover:shadow-sm transition-colors">
                     <div class="text-[11px] font-medium text-emerald-700">Erw. JRV gesamt</div>
                     <div class="text-xl font-semibold mt-1 text-emerald-700">{{ $eur($g['total']) }}</div>
                     <div class="text-[11px] text-emerald-600/70 mt-0.5">JRV + WKZ</div>
@@ -293,6 +293,83 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Detail-Fenster (Klick auf eine Kachel) --}}
+            @php
+                $cut = $M['ist_through_month'];
+                $cutLabel = $M['months'][$cut - 1] ?? '';
+                $panels = ['er' => ['d' => $er, 'color' => $ER_COLOR], 'ev' => ['d' => $ev, 'color' => $EV_COLOR]];
+            @endphp
+            @foreach($panels as $pk => $p)
+                @php
+                    $d = $p['d'];
+                    $activeBand = collect($d['staffel'])->firstWhere('active', true);
+                    $forecastSum = $d['prognose'] - $d['ist_sum'];
+                @endphp
+                <div x-show="modal === '{{ $pk }}'" style="display:none"
+                     class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                     @click.self="modal = null" @keydown.escape.window="modal = null">
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-auto">
+                        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 sticky top-0 bg-white">
+                            <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2"><span class="w-2 h-2 rounded-full" style="background: {{ $p['color'] }}"></span>{{ $d['label'] }} — Zusammensetzung 2026</h3>
+                            <button type="button" @click="modal = null" class="text-[12px] text-gray-400 hover:text-gray-700">schließen</button>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <table class="w-full text-[13px]">
+                                <thead>
+                                    <tr class="text-gray-500 text-[11px] uppercase tracking-wide border-b border-gray-200">
+                                        <th class="text-left font-medium py-1.5">Monat</th>
+                                        <th class="text-right font-medium py-1.5">Netto-Mietumsatz</th>
+                                        <th class="text-right font-medium py-1.5">Quelle</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($M['months'] as $i => $label)
+                                        @php $mNum = $i + 1; $isIst = $mNum <= $cut; @endphp
+                                        <tr class="border-b border-gray-100">
+                                            <td class="py-1.5 text-gray-700">{{ $label }}</td>
+                                            <td class="py-1.5 text-right tabular-nums text-gray-900">{{ $eur($d['series'][$mNum] ?? 0) }}</td>
+                                            <td class="py-1.5 text-right">
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium {{ $isIst ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700' }}">{{ $isIst ? 'IST' : 'Forecast' }}</span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 text-[13px] space-y-1.5">
+                                <div class="flex justify-between"><span class="text-gray-500">IST (Jan–{{ $cutLabel }})</span><span class="tabular-nums text-gray-900">{{ $eur($d['ist_sum']) }}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">Forecast (Rest)</span><span class="tabular-nums text-gray-900">{{ $eur($forecastSum) }}</span></div>
+                                <div class="flex justify-between border-t border-gray-200 pt-1.5"><span class="font-medium text-gray-700">Jahresprognose</span><span class="tabular-nums font-semibold text-gray-900">{{ $eur($d['prognose']) }}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">Aktive Staffel</span><span class="text-gray-900">{{ $activeBand['label'] ?? '—' }} · {{ $activeBand && $activeBand['satz'] > 0 ? number_format($activeBand['satz'] * 100, 2, ',', '.') . ' %' : '—' }}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">Erwartete JRV</span><span class="tabular-nums font-semibold text-emerald-700">{{ $eur($d['jrv']) }}</span></div>
+                                @if($pk === 'ev')
+                                    <div class="flex justify-between"><span class="text-gray-500">WKZ</span><span class="tabular-nums text-gray-900">{{ $eur($d['wkz']) }}</span></div>
+                                @endif
+                            </div>
+                            <p class="text-[11px] text-gray-400">Jan–{{ $cutLabel }} aus den Rechnungspositionen (bereinigt). Ab {{ $M['months'][$cut] ?? '' }} aus der Auftrags-Pipeline (sonst Vorjahr × Faktor).</p>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+
+            {{-- JRV gesamt Detail --}}
+            <div x-show="modal === 'jrv'" style="display:none"
+                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                 @click.self="modal = null" @keydown.escape.window="modal = null">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+                    <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-900">Erwartete JRV gesamt 2026</h3>
+                        <button type="button" @click="modal = null" class="text-[12px] text-gray-400 hover:text-gray-700">schließen</button>
+                    </div>
+                    <div class="p-5 text-[13px] space-y-1.5">
+                        <div class="flex justify-between"><span class="text-gray-500">JRV {{ $er['label'] }}</span><span class="tabular-nums text-gray-900">{{ $eur($g['jrv_er']) }}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">JRV {{ $ev['label'] }}</span><span class="tabular-nums text-gray-900">{{ $eur($g['jrv_ev']) }}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">WKZ {{ $ev['label'] }}</span><span class="tabular-nums text-gray-900">{{ $eur($g['wkz']) }}</span></div>
+                        <div class="flex justify-between border-t border-gray-200 pt-1.5"><span class="font-semibold text-gray-900">Gesamt</span><span class="tabular-nums font-semibold text-emerald-700">{{ $eur($g['total']) }}</span></div>
+                        <p class="text-[11px] text-gray-400 pt-2">JRV = Jahresprognose × Satz der erreichten Staffel. WKZ nur {{ $ev['label'] }}, gestaffelt nach Jahresprognose.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </x-ui-page-container>
