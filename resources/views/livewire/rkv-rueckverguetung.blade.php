@@ -37,39 +37,53 @@
         @endverbatim
 
         <div class="space-y-6">
+            @if(session('rkv_saved'))
+                <div class="p-2.5 rounded-md bg-emerald-50 border border-emerald-200 text-[13px] text-emerald-700">✓ Parameter gespeichert — Zahlen aktualisiert.</div>
+            @endif
+
             {{-- Header --}}
-            <div>
-                <h1 class="text-lg font-semibold text-gray-900">RKV Rückvergütung 2026</h1>
-                <p class="text-[12px] text-gray-500 mt-0.5">Jahresübersicht — IST Jan–Jun (Rechnungspositionen) + Forecast Jul–Dez (Auftrags-Pipeline). JRV = Jahresprognose × Staffelsatz.</p>
+            <div class="flex items-start justify-between">
+                <div>
+                    <h1 class="text-lg font-semibold text-gray-900">RKV Rückvergütung 2026</h1>
+                    <p class="text-[12px] text-gray-500 mt-0.5">Jahresübersicht — IST Jan–Jun (Rechnungspositionen) + Forecast Jul–Dez (Auftrags-Pipeline). JRV = Jahresprognose × Staffelsatz.</p>
+                </div>
+                <a href="{{ route('datawarehouse.rkv.edit') }}" wire:navigate class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors shrink-0">
+                    @svg('heroicon-o-pencil-square', 'w-4 h-4')
+                    Bearbeiten
+                </a>
             </div>
 
-            {{-- KPI-Kacheln (Klick → Detailseite, wie bei den KPIs) --}}
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <a href="{{ route('datawarehouse.rkv.detail', 'er') }}" wire:navigate class="block bg-white rounded-lg border border-gray-200 p-4 hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
-                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $ER_COLOR }}"></span>ER IST Jan–Jun</div>
-                    <div class="text-xl font-semibold mt-1" style="color: {{ $ER_COLOR }}">{{ $eur($er['ist_sum']) }}</div>
-                    <div class="text-[11px] text-gray-400 mt-0.5">aus Rechnungspositionen</div>
-                </a>
-                <a href="{{ route('datawarehouse.rkv.detail', 'er') }}" wire:navigate class="block bg-white rounded-lg border border-gray-200 p-4 hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
-                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $ER_COLOR }}"></span>ER Jahresprognose</div>
-                    <div class="text-xl font-semibold mt-1" style="color: {{ $ER_COLOR }}">{{ $eur($er['prognose']) }}</div>
-                    <div class="text-[11px] text-gray-400 mt-0.5">IST + Forecast</div>
-                </a>
-                <a href="{{ route('datawarehouse.rkv.detail', 'ev') }}" wire:navigate class="block bg-white rounded-lg border border-gray-200 p-4 hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
-                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $EV_COLOR }}"></span>EV IST Jan–Jun</div>
-                    <div class="text-xl font-semibold mt-1" style="color: {{ $EV_COLOR }}">{{ $eur($ev['ist_sum']) }}</div>
-                    <div class="text-[11px] text-gray-400 mt-0.5">aus Rechnungspositionen</div>
-                </a>
-                <a href="{{ route('datawarehouse.rkv.detail', 'ev') }}" wire:navigate class="block bg-white rounded-lg border border-gray-200 p-4 hover:border-[#166EE1]/50 hover:shadow-sm transition-colors">
-                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500"><span class="w-2 h-2 rounded-sm" style="background: {{ $EV_COLOR }}"></span>EV Jahresprognose</div>
-                    <div class="text-xl font-semibold mt-1" style="color: {{ $EV_COLOR }}">{{ $eur($ev['prognose']) }}</div>
-                    <div class="text-[11px] text-gray-400 mt-0.5">IST + Forecast</div>
-                </a>
-                <a href="{{ route('datawarehouse.rkv.detail', 'jrv') }}" wire:navigate class="block bg-emerald-50 rounded-lg border border-emerald-200 p-4 hover:border-emerald-400 hover:shadow-sm transition-colors">
-                    <div class="text-[11px] font-medium text-emerald-700">Erw. JRV gesamt</div>
-                    <div class="text-xl font-semibold mt-1 text-emerald-700">{{ $eur($g['total']) }}</div>
-                    <div class="text-[11px] text-emerald-600/70 mt-0.5">JRV + WKZ</div>
-                </a>
+            {{-- KPI-Kacheln (Design wie die Standard-KPIs; Klick → Detailseite) --}}
+            @php
+                $tiles = [
+                    ['seg' => 'er',  'icon' => 'currency-euro', 'title' => 'ER IST Jan–Jun',    'value' => $er['ist_sum'],  'sub' => 'IST Jan–Jun',   'accent' => false],
+                    ['seg' => 'er',  'icon' => 'currency-euro', 'title' => 'ER Jahresprognose', 'value' => $er['prognose'], 'sub' => 'IST + Forecast', 'accent' => false],
+                    ['seg' => 'ev',  'icon' => 'currency-euro', 'title' => 'EV IST Jan–Jun',    'value' => $ev['ist_sum'],  'sub' => 'IST Jan–Jun',   'accent' => false],
+                    ['seg' => 'ev',  'icon' => 'currency-euro', 'title' => 'EV Jahresprognose', 'value' => $ev['prognose'], 'sub' => 'IST + Forecast', 'accent' => false],
+                    ['seg' => 'jrv', 'icon' => 'banknotes',     'title' => 'Erw. JRV gesamt',   'value' => $g['total'],     'sub' => 'JRV + WKZ',      'accent' => true],
+                ];
+            @endphp
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($tiles as $t)
+                    <a href="{{ route('datawarehouse.rkv.detail', $t['seg']) }}" wire:navigate class="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-8 h-8 rounded-lg {{ $t['accent'] ? 'bg-emerald-50' : 'bg-gray-50' }} flex items-center justify-center shrink-0">
+                                    @svg('heroicon-o-' . $t['icon'], 'w-4 h-4 ' . ($t['accent'] ? 'text-emerald-600' : 'text-[#166EE1]'))
+                                </div>
+                                <div class="text-[13px] font-medium text-gray-900 truncate">{{ $t['title'] }}</div>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold tabular-nums {{ $t['accent'] ? 'text-emerald-700' : 'text-gray-900' }}">{{ number_format((float) $t['value'], 2, ',', '.') }}</div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[11px] text-gray-400">{{ $t['sub'] }} · EUR</span>
+                            <span class="text-[11px] text-[#166EE1] flex items-center gap-0.5 ml-auto shrink-0">
+                                Detail
+                                @svg('heroicon-o-chevron-right', 'w-3.5 h-3.5')
+                            </span>
+                        </div>
+                    </a>
+                @endforeach
             </div>
 
             {{-- Progress + Gesamtvorteil --}}
@@ -151,38 +165,6 @@
                         @endforeach
                     </div>
                     <p class="text-[11px] text-gray-400 mt-2">Jan–Jun: IST · Jul–Dez: Forecast (Auftrags-Pipeline, sonst Vorjahr × Faktor).</p>
-                </div>
-            </section>
-
-            {{-- Forecast-Parameter --}}
-            <section class="bg-white rounded-lg border border-gray-200">
-                <div class="px-4 py-3 border-b border-gray-200">
-                    <h3 class="text-sm font-semibold text-gray-900">Forecast-Parameter</h3>
-                    <p class="text-[11px] text-gray-400 mt-0.5">Wachstumsfaktor für Forecast-Monate ohne Pipeline-Daten. Pipeline-Daten (Streams) haben Vorrang.</p>
-                </div>
-                <div class="p-4">
-                    <form wire:submit.prevent="saveParams" class="flex flex-wrap items-end gap-4">
-                        <div>
-                            <label class="block text-[11px] font-medium text-gray-500 mb-1">Wachstumsfaktor (Vorjahr × Faktor)</label>
-                            <input type="number" step="0.001" min="0" wire:model="factor"
-                                   class="w-40 px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px] tabular-nums focus:border-[#166EE1] focus:outline-none" />
-                            @error('factor') <div class="text-[11px] text-red-600 mt-1">{{ $message }}</div> @enderror
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-medium text-gray-500 mb-1">IST bis inkl. Monat</label>
-                            <input type="number" min="0" max="12" wire:model="istThroughMonth"
-                                   class="w-28 px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px] tabular-nums focus:border-[#166EE1] focus:outline-none" />
-                            @error('istThroughMonth') <div class="text-[11px] text-red-600 mt-1">{{ $message }}</div> @enderror
-                        </div>
-                        <button type="submit"
-                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
-                            Speichern
-                        </button>
-                        @if($paramsSaved)
-                            <span class="text-[12px] text-emerald-600">✓ gespeichert — Zahlen aktualisiert</span>
-                        @endif
-                    </form>
-                    <p class="text-[11px] text-gray-400 mt-3">Staffeln, WKZ und Vorjahreswerte änderst Du per LLM-Tool <span class="font-mono">datawarehouse.rkv_config.PUT</span> (unten in den Tabellen sichtbar).</p>
                 </div>
             </section>
 
