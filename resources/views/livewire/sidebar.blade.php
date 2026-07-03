@@ -41,7 +41,8 @@
     <div x-show="!collapsed" class="px-2 mb-1">
         <div class="px-2 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 font-medium">Dashboards</div>
         @foreach($dashboards as $dashboard)
-            <a href="{{ route('datawarehouse.dashboard.view', $dashboard) }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
+            @php $isActive = request()->routeIs('datawarehouse.dashboard.view') && (int) optional(request()->route('dashboard'))->id === (int) $dashboard->id; @endphp
+            <a href="{{ route('datawarehouse.dashboard.view', $dashboard) }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] transition-colors {{ $isActive ? 'bg-[#2C3135] text-white' : 'text-gray-300 hover:bg-[#2C3135] hover:text-white' }}">
                 @svg('heroicon-o-' . $dashboard->icon, 'w-4 h-4')
                 <span class="truncate">{{ $dashboard->name }}</span>
             </a>
