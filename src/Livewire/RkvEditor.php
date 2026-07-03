@@ -17,8 +17,10 @@ use Platform\Datawarehouse\Models\DatawarehouseRkvConfig;
  */
 class RkvEditor extends Component
 {
-    public float $factor = 1.87;
-    public int $istThroughMonth = 6;
+    // Nullable so clearing the number input (Livewire sends "") does not throw
+    // a TypeError on hydration; null is caught in save().
+    public ?float $factor = 1.87;
+    public ?int $istThroughMonth = 6;
     public string $erLabel = 'Event Rent';
     public string $evLabel = 'eventura';
     public array $erStaffel = [];
@@ -85,11 +87,11 @@ class RkvEditor extends Component
 
     public function save(): void
     {
-        if ($this->factor <= 0) {
-            $this->addError('factor', 'Faktor muss > 0 sein.');
+        if ($this->factor === null || $this->factor <= 0) {
+            $this->addError('factor', 'Faktor muss eine Zahl > 0 sein.');
             return;
         }
-        if ($this->istThroughMonth < 0 || $this->istThroughMonth > 12) {
+        if ($this->istThroughMonth === null || $this->istThroughMonth < 0 || $this->istThroughMonth > 12) {
             $this->addError('istThroughMonth', 'Monat muss zwischen 0 und 12 liegen.');
             return;
         }

@@ -32,6 +32,12 @@ class DashboardView extends Component
 
     public function deleteDashboard(): void
     {
+        // Custom-view dashboards (e.g. RKV) are system views and get re-created;
+        // don't allow deleting them here.
+        if ($this->dashboard->isCustomView()) {
+            return;
+        }
+
         $this->dashboard->delete();
         $this->redirect(route('datawarehouse.dashboard'));
     }
