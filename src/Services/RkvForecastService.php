@@ -31,8 +31,25 @@ class RkvForecastService
     {
         $cfg = DatawarehouseRkvConfig::forTeamOrDefault($teamId, $userId)->config;
 
-        $er = $this->company($teamId, $cfg, 'er');
-        $ev = $this->company($teamId, $cfg, 'ev');
+        $erMaps = $this->companyMaps($teamId, $cfg, 'er');
+        $evMaps = $this->companyMaps($teamId, $cfg, 'ev');
+
+        return $this->assemble($cfg, $erMaps['ist'], $erMaps['forecast'], $evMaps['ist'], $evMaps['forecast']);
+    }
+
+    /**
+     * Pure assembly of the full dashboard model from the per-company monthly
+     * IST/Forecast maps. No DB access → unit-testable with fixtures.
+     *
+     * @param array<int,float> $erIst
+     * @param array<int,float> $erForecast
+     * @param array<int,float> $evIst
+     * @param array<int,float> $evForecast
+     */
+    public function assemble(array $cfg, array $erIst, array $erForecast, array $evIst, array $evForecast): array
+    {
+        $er = $this->buildCompany($cfg, 'er', $erIst, $erForecast);
+        $ev = $this->buildCompany($cfg, 'ev', $evIst, $evForecast);
 
         $jrvEr = $this->jrv($er['prognose'], $cfg['er']['staffel']);
         $jrvEv = $this->jrv($ev['prognose'], $cfg['ev']['staffel']);
@@ -86,17 +103,15 @@ class RkvForecastService
     }
 
     /**
-     * Per-company monthly series + sums.
+     * DB fetch: per-company monthly IST (Stream 14, filtered by kreditor,
+     * bereinigt) and Forecast (Stream 16/17) maps for the current year.
      *
-     * @return array{ist: array<int,float>, forecast: array<int,float>, series: array<int,float>, istSum: float, prognose: float}
+     * @return array{ist: array<int,float>, forecast: array<int,float>}
      */
-    private function company(int $teamId, array $cfg, string $key): array
+    private function companyMaps(int $teamId, array $cfg, string $key): array
     {
         $c   = $cfg[$key];
         $col = $cfg['columns'];
-        $cut = (int) ($cfg['ist_through_month'] ?? 6);
-        $factor = (float) ($cfg['factor'] ?? 1.0);
-        $vorjahr = $cfg['vorjahr'][$key] ?? [];
 
         $ist = $this->breakdownMap($teamId, (int) $c['ist_stream_id'], $col['ist_netto'], $col['ist_date'], [
             'stream_alias' => 's0',
@@ -106,6 +121,24 @@ class RkvForecastService
         ]);
 
         $forecast = $this->breakdownMap($teamId, (int) $c['forecast_stream_id'], $col['forecast_value'], $col['forecast_date'], null);
+
+        return ['ist' => $ist, 'forecast' => $forecast];
+    }
+
+    /**
+     * Pure: build the 12-month series + sums for one company from its IST and
+     * Forecast maps. Months ≤ ist_through_month use IST; later months use the
+     * Forecast value if present, otherwise Vorjahr[m] × factor.
+     *
+     * @param array<int,float> $ist
+     * @param array<int,float> $forecast
+     * @return array{series: array<int,float>, istSum: float, prognose: float}
+     */
+    private function buildCompany(array $cfg, string $key, array $ist, array $forecast): array
+    {
+        $cut = (int) ($cfg['ist_through_month'] ?? 6);
+        $factor = (float) ($cfg['factor'] ?? 1.0);
+        $vorjahr = $cfg['vorjahr'][$key] ?? [];
 
         $series = [];
         for ($m = 1; $m <= 12; $m++) {
@@ -122,8 +155,6 @@ class RkvForecastService
         }
 
         return [
-            'ist'      => $ist,
-            'forecast' => $forecast,
             'series'   => $series,
             'istSum'   => $istSum,
             'prognose' => array_sum($series),
