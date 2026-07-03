@@ -19,6 +19,8 @@ class RkvEditor extends Component
 {
     public float $factor = 1.87;
     public int $istThroughMonth = 6;
+    public string $erLabel = 'Event Rent';
+    public string $evLabel = 'eventura';
     public array $erStaffel = [];
     public array $evStaffel = [];
     public array $evWkz = [];
@@ -35,6 +37,8 @@ class RkvEditor extends Component
 
         $this->factor = (float) ($cfg['factor'] ?? 1.87);
         $this->istThroughMonth = (int) ($cfg['ist_through_month'] ?? 6);
+        $this->erLabel = (string) ($cfg['er']['label'] ?? 'Event Rent');
+        $this->evLabel = (string) ($cfg['ev']['label'] ?? 'eventura');
         $this->erStaffel = $this->staffelToForm($cfg['er']['staffel'] ?? []);
         $this->evStaffel = $this->staffelToForm($cfg['ev']['staffel'] ?? []);
         $this->evWkz = array_map(fn ($w) => ['ab' => $w['ab'], 'wkz' => $w['wkz']], $cfg['ev']['wkz'] ?? []);
@@ -90,6 +94,13 @@ class RkvEditor extends Component
             return;
         }
 
+        $erLabel = trim($this->erLabel);
+        $evLabel = trim($this->evLabel);
+        if ($erLabel === '' || $evLabel === '') {
+            $this->addError('labels', 'Die Bezeichnungen dürfen nicht leer sein.');
+            return;
+        }
+
         $erStaffel = $this->formToStaffel($this->erStaffel, 'erStaffel');
         $evStaffel = $this->formToStaffel($this->evStaffel, 'evStaffel');
         if ($erStaffel === null || $evStaffel === null) {
@@ -112,8 +123,8 @@ class RkvEditor extends Component
         DatawarehouseRkvConfig::forTeamOrDefault($user->currentTeam->id, $user->id)->applyPatch([
             'factor'            => (float) $this->factor,
             'ist_through_month' => (int) $this->istThroughMonth,
-            'er'      => ['staffel' => $erStaffel],
-            'ev'      => ['staffel' => $evStaffel, 'wkz' => $wkz],
+            'er'      => ['label' => $erLabel, 'staffel' => $erStaffel],
+            'ev'      => ['label' => $evLabel, 'staffel' => $evStaffel, 'wkz' => $wkz],
             'vorjahr' => ['er' => $vorjahrEr, 'ev' => $vorjahrEv],
         ]);
 

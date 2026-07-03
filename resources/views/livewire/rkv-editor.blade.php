@@ -34,7 +34,16 @@
 
             {{-- Grundparameter --}}
             <section class="bg-white rounded-lg border border-gray-200 p-4">
+                @error('labels') <div class="text-[11px] text-red-600 mb-2">{{ $message }}</div> @enderror
                 <div class="flex flex-wrap items-end gap-4">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Bezeichnung 1 (intern: EVENT RENT)</label>
+                        <input type="text" wire:model="erLabel" class="w-44 {{ $inputCls }}" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 mb-1">Bezeichnung 2 (intern: EVENTURA)</label>
+                        <input type="text" wire:model="evLabel" class="w-44 {{ $inputCls }}" />
+                    </div>
                     <div>
                         <label class="block text-[11px] font-medium text-gray-500 mb-1">Wachstumsfaktor (Vorjahr × Faktor)</label>
                         <input type="number" step="0.001" min="0" wire:model="factor" class="w-40 {{ $inputCls }}" />
