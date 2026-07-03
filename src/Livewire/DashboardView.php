@@ -5,6 +5,7 @@ namespace Platform\Datawarehouse\Livewire;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Platform\Datawarehouse\Models\DatawarehouseDashboard;
+use Platform\Datawarehouse\Services\DashboardPanelService;
 use Platform\Datawarehouse\Services\KpiQueryBuilder;
 
 class DashboardView extends Component
@@ -54,6 +55,7 @@ class DashboardView extends Component
                 'kpis'      => collect(),
                 'viewCfg'   => $viewCfg,
                 'viewData'  => $viewData,
+                'panels'    => [],
             ])->layout('platform::layouts.app');
         }
 
@@ -79,6 +81,7 @@ class DashboardView extends Component
             'kpis'     => $kpis,
             'viewCfg'  => null,
             'viewData' => null,
+            'panels'   => app(DashboardPanelService::class)->resolve($this->dashboard),
         ])->layout('platform::layouts.app');
     }
 }

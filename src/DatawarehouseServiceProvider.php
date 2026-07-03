@@ -194,6 +194,13 @@ class DatawarehouseServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Datawarehouse\Tools\DetachKpiFromDashboardTool());
             $registry->register(new \Platform\Datawarehouse\Tools\ReorderDashboardKpisTool());
 
+            // Dashboard Panels (wiederverwendbare Bausteine: chart/progress/summary/value)
+            $registry->register(new \Platform\Datawarehouse\Tools\GetDashboardPanelsTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\CreateDashboardPanelTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\UpdateDashboardPanelTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\DeleteDashboardPanelTool());
+            $registry->register(new \Platform\Datawarehouse\Tools\ReorderDashboardPanelsTool());
+
             // Imports (read-only)
             $registry->register(new \Platform\Datawarehouse\Tools\ListImportsTool());
             $registry->register(new \Platform\Datawarehouse\Tools\GetImportTool());

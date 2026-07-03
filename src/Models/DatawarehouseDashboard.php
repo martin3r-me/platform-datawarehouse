@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class DatawarehouseDashboard extends Model
@@ -56,6 +57,11 @@ class DatawarehouseDashboard extends Model
             ->withPivot('position')
             ->withTimestamps()
             ->orderByPivot('position');
+    }
+
+    public function panels(): HasMany
+    {
+        return $this->hasMany(DatawarehouseDashboardPanel::class, 'dashboard_id')->orderBy('position');
     }
 
     // --- Scopes ---

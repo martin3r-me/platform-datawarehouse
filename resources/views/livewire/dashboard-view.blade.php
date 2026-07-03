@@ -58,6 +58,28 @@
             @if($viewCfg)
                 @include($viewCfg['partial'], ['data' => $viewData, 'dashboard' => $dashboard])
             @else
+            {{-- Panels (wiederverwendbare Bausteine) --}}
+            @if(!empty($panels))
+                @verbatim
+                <style>
+                    @keyframes dwGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+                    .dw-bar-y { transform-origin: bottom; animation: dwGrowY .7s cubic-bezier(.22,1,.36,1) both; }
+                    @keyframes dwGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+                    .dw-bar-x { transform-origin: left; animation: dwGrowX .7s cubic-bezier(.22,1,.36,1) both; }
+                </style>
+                @endverbatim
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    @foreach($panels as $pnl)
+                        @php $reg = config('datawarehouse.dashboard_panels.' . $pnl['type']); @endphp
+                        @if($reg)
+                            <div class="{{ ($pnl['width'] ?? 'half') === 'full' ? 'lg:col-span-2' : '' }}">
+                                @include($reg['partial'], ['p' => $pnl])
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+
             {{-- KPI Grid --}}
             @if($kpis->isNotEmpty())
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

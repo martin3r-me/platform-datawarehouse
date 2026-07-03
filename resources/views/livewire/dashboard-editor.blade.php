@@ -178,6 +178,81 @@
                 @endif
             </section>
 
+            {{-- Panels (wiederverwendbare Bausteine) --}}
+            @php $panelTypes = config('datawarehouse.dashboard_panels', []); @endphp
+            <section class="bg-white rounded-lg border border-gray-200">
+                <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-900">Panels</h2>
+                        <p class="text-[11px] text-gray-500 mt-0.5">Chart, Fortschritt, Mehrwert-Karte oder Einzelwert — für beliebige Kennzahlen.</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <select wire:model="newPanelType" class="px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px]">
+                            @foreach($panelTypes as $key => $meta)
+                                <option value="{{ $key }}">{{ $meta['label'] }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" wire:click="addPanel" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#166EE1] text-white text-[13px] font-medium hover:bg-blue-700 transition-colors">
+                            @svg('heroicon-o-plus', 'w-4 h-4')
+                            Panel
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4 space-y-3">
+                    @error('panels') <div class="text-[12px] text-red-600">{{ $message }}</div> @enderror
+                    @forelse($panels as $i => $panel)
+                        <div class="rounded-lg border border-gray-200 p-3" wire:key="panel-{{ $i }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-[#166EE1]/10 text-[#166EE1]">{{ $panelTypes[$panel['type']]['label'] ?? $panel['type'] }}</span>
+                                <div class="flex items-center gap-1 text-gray-400">
+                                    <button type="button" wire:click="movePanel({{ $i }}, -1)" class="p-1 hover:text-gray-700" title="hoch">@svg('heroicon-o-arrow-up', 'w-4 h-4')</button>
+                                    <button type="button" wire:click="movePanel({{ $i }}, 1)" class="p-1 hover:text-gray-700" title="runter">@svg('heroicon-o-arrow-down', 'w-4 h-4')</button>
+                                    <button type="button" wire:click="removePanel({{ $i }})" class="p-1 text-red-400 hover:text-red-600" title="entfernen">@svg('heroicon-o-trash', 'w-4 h-4')</button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] text-gray-500 mb-1">Titel (optional)</label>
+                                    <input type="text" wire:model="panels.{{ $i }}.title" class="w-full px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px]" />
+                                </div>
+                                @if(in_array($panel['type'], ['kpi_value', 'kpi_chart']))
+                                    <div>
+                                        <label class="block text-[11px] text-gray-500 mb-1">Kennzahl</label>
+                                        <select wire:model="panels.{{ $i }}.kpi_id" class="w-full px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px]">
+                                            <option value="">— wählen —</option>
+                                            @foreach($this->allKpis as $k)<option value="{{ $k->id }}">{{ $k->name }}</option>@endforeach
+                                        </select>
+                                    </div>
+                                @endif
+                                @if($panel['type'] === 'kpi_chart')
+                                    <div>
+                                        <label class="block text-[11px] text-gray-500 mb-1">Granularität</label>
+                                        <select wire:model="panels.{{ $i }}.granularity" class="w-full px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px]">
+                                            <option value="month">Monate</option>
+                                            <option value="quarter">Quartale</option>
+                                        </select>
+                                    </div>
+                                    <label class="flex items-center gap-2 text-[13px] text-gray-700 sm:col-span-2">
+                                        <input type="checkbox" wire:model="panels.{{ $i }}.stack_children" class="rounded border-gray-300" />
+                                        Nach Kind-KPIs stapeln (Farben)
+                                    </label>
+                                @endif
+                                @if(in_array($panel['type'], ['progress', 'summary']))
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[11px] text-gray-500 mb-1">Kennzahlen (Mehrfachauswahl)</label>
+                                        <select multiple wire:model="panels.{{ $i }}.kpi_ids" size="4" class="w-full px-2.5 py-1.5 rounded-md border border-gray-300 text-[13px]">
+                                            @foreach($this->allKpis as $k)<option value="{{ $k->id }}">{{ $k->name }}</option>@endforeach
+                                        </select>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-[12px] text-gray-400">Noch keine Panels. Oben Typ wählen und „+ Panel".</p>
+                    @endforelse
+                </div>
+            </section>
+
             {{-- Actions --}}
             <div class="flex items-center justify-between">
                 <a

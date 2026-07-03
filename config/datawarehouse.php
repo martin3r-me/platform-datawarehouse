@@ -47,6 +47,18 @@ return [
      * instead of the KPI-tile grid. Add an entry here + a partial + a service to
      * expose a new computed/forecast view as a dashboard under /dashboards/{id}.
      */
+    /*
+     * Reusable dashboard panels (additive layer over the KPI-tile grid). Each
+     * type maps to a blade partial + a width; DashboardPanelService resolves the
+     * data. Add a type here + a partial to introduce a new panel kind.
+     */
+    'dashboard_panels' => [
+        'kpi_value' => ['label' => 'Einzelwert-Kachel', 'icon' => 'hashtag',          'partial' => 'datawarehouse::livewire.partials.panels.kpi-value', 'width' => 'half'],
+        'kpi_chart' => ['label' => 'Monats-/Quartals-Chart', 'icon' => 'chart-bar',    'partial' => 'datawarehouse::livewire.partials.panels.kpi-chart', 'width' => 'full'],
+        'progress'  => ['label' => 'Fortschrittsbalken', 'icon' => 'chart-bar-square', 'partial' => 'datawarehouse::livewire.partials.panels.progress',  'width' => 'half'],
+        'summary'   => ['label' => 'Mehrwert-Karte', 'icon' => 'squares-2x2',          'partial' => 'datawarehouse::livewire.partials.panels.summary',   'width' => 'half'],
+    ],
+
     'dashboard_views' => [
         'rkv' => [
             'label'      => 'RKV Rückvergütung 2026',
