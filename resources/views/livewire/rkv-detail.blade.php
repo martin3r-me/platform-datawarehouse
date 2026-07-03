@@ -157,8 +157,11 @@
                                 @endphp
                                 <div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end">
                                     <div class="text-[10px] text-gray-500 tabular-nums mb-1 whitespace-nowrap">{{ $compact($v) }}</div>
-                                    <div class="w-full rounded-t rkv-bar-y" style="height: {{ $h }}%; background: {{ $color }}; opacity: {{ $isIst ? '1' : '.45' }}; animation-delay: {{ $i * 40 }}ms"
-                                         title="{{ $label }}: {{ $eur($v) }} ({{ $isIst ? 'IST' : 'Forecast' }})"></div>
+                                    <div class="w-full h-full flex items-end justify-center">
+                                        <div class="relative group w-full rounded-t rkv-bar-y" style="height: {{ $h }}%; background: {{ $color }}; opacity: {{ $isIst ? '1' : '.45' }}; animation-delay: {{ $i * 40 }}ms">
+                                            <div class="pointer-events-none absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap rounded bg-gray-900/90 text-white text-[10px] leading-none px-1.5 py-1 z-20">{{ $label }}: {{ $eur($v) }} · {{ $isIst ? 'IST' : 'Forecast' }}</div>
+                                        </div>
+                                    </div>
                                     <div class="text-[10px] text-gray-500 mt-1.5">{{ $label }}</div>
                                 </div>
                             @endforeach

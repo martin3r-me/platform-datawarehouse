@@ -122,10 +122,16 @@
                     @endphp
                     <div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end">
                         <div class="w-full flex items-end justify-center gap-0.5 h-full">
-                            <div class="w-1/2 rounded-t rkv-bar-y" style="height: {{ $erH }}%; background: {{ $ER_COLOR }}; animation-delay: {{ $i * 40 }}ms"
-                                 title="{{ $er['label'] }} {{ $label }}: {{ $eur($erV) }}"></div>
-                            <div class="w-1/2 rounded-t rkv-bar-y" style="height: {{ $evH }}%; background: {{ $EV_COLOR }}; animation-delay: {{ $i * 40 + 20 }}ms"
-                                 title="{{ $ev['label'] }} {{ $label }}: {{ $eur($evV) }}"></div>
+                            <div class="w-1/2 h-full flex items-end justify-center">
+                                <div class="relative group w-full rounded-t rkv-bar-y" style="height: {{ $erH }}%; background: {{ $ER_COLOR }}; animation-delay: {{ $i * 40 }}ms">
+                                    <div class="pointer-events-none absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap rounded bg-gray-900/90 text-white text-[10px] leading-none px-1.5 py-1 z-20">{{ $er['label'] }} {{ $label }}: {{ $eur($erV) }}</div>
+                                </div>
+                            </div>
+                            <div class="w-1/2 h-full flex items-end justify-center">
+                                <div class="relative group w-full rounded-t rkv-bar-y" style="height: {{ $evH }}%; background: {{ $EV_COLOR }}; animation-delay: {{ $i * 40 + 20 }}ms">
+                                    <div class="pointer-events-none absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap rounded bg-gray-900/90 text-white text-[10px] leading-none px-1.5 py-1 z-20">{{ $ev['label'] }} {{ $label }}: {{ $eur($evV) }}</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="text-[10px] text-gray-500 mt-1.5">{{ $label }}</div>
                     </div>
