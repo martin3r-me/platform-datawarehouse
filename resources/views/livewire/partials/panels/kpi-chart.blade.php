@@ -23,11 +23,13 @@
                 @foreach($d['bars'] as $i => $b)
                     <div class="flex-1 min-w-0 h-full flex flex-col items-center justify-end">
                         <div class="w-full h-full flex items-end justify-center">
-                            <div class="relative group w-full rounded-t overflow-hidden dw-bar-y flex flex-col-reverse"
-                                 style="height: {{ max(0, round($b['total'] / $d['max'] * 100)) }}%; animation-delay: {{ $i * 40 }}ms">
-                                @foreach($b['segments'] as $seg)
-                                    <div style="flex: {{ $seg['value'] }} {{ $seg['value'] }} 0%; background: {{ $seg['color'] }}"></div>
-                                @endforeach
+                            <div class="relative group w-full dw-bar-y" style="height: {{ max(0, round($b['total'] / $d['max'] * 100)) }}%; animation-delay: {{ $i * 40 }}ms">
+                                {{-- geklippter Segment-Stack (overflow-hidden nur hier, damit der Tooltip nicht abgeschnitten wird) --}}
+                                <div class="absolute inset-0 rounded-t overflow-hidden flex flex-col-reverse">
+                                    @foreach($b['segments'] as $seg)
+                                        <div style="flex: {{ $seg['value'] }} {{ $seg['value'] }} 0%; background: {{ $seg['color'] }}"></div>
+                                    @endforeach
+                                </div>
                                 <div class="pointer-events-none absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap rounded bg-gray-900/90 text-white text-[10px] leading-none px-1.5 py-1 z-20">{{ $b['label'] }}: {{ $fmt($b['total']) }}</div>
                             </div>
                         </div>
