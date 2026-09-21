@@ -92,7 +92,7 @@ class DwhOverviewTool implements ToolContract, ToolMetadataContract
                     'kpis' => [
                         'model' => 'Platform\\Datawarehouse\\Models\\DatawarehouseKpi',
                         'table' => 'datawarehouse_kpis',
-                        'key_fields' => ['id', 'uuid', 'name', 'description', 'icon', 'variant', 'unit', 'format', 'decimals', 'position', 'definition', 'cached_value', 'cached_at', 'display_range', 'cached_comparison_value', 'status', 'last_error'],
+                        'key_fields' => ['id', 'uuid', 'name', 'description', 'icon', 'variant', 'unit', 'format', 'decimals', 'position', 'definition', 'cached_value', 'cached_at', 'display_range', 'snapshot_schedule', 'cached_comparison_value', 'status', 'last_error'],
                         'note' => 'Ein KPI ist eine validierte SQL-Aggregation über einen oder mehrere Streams. Die definition (JSON) wird vor dem Speichern gegen Whitelists geprüft (ALLOWED_AGGREGATIONS, ALLOWED_OPERATORS, COLUMN_REGEX, ALIAS_REGEX) — eigene SQL-Fragmente sind nicht möglich.',
                         'definition_shape' => [
                             'streams' => '[{stream_id, alias: "s0|s1|..."}, ...] - Basis-Stream zuerst, dann optional Joins',

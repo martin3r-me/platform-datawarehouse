@@ -85,6 +85,8 @@ class GetKpiTool implements ToolContract, ToolMetadataContract
                 'definition'              => $kpi->definition,
                 'display_range'           => $kpi->display_range,
                 'display_range_label'     => $kpi->displayRangeLabel(),
+                'snapshot_schedule'       => $kpi->snapshotSchedule(),
+                'snapshot_schedule_label' => $kpi->snapshotScheduleLabel(),
                 'cached_value'            => $kpi->cached_value !== null ? (float)$kpi->cached_value : null,
                 'cached_comparison_value' => $kpi->cached_comparison_value !== null ? (float)$kpi->cached_comparison_value : null,
                 'cached_at'               => $kpi->cached_at?->toISOString(),

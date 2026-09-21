@@ -60,6 +60,31 @@ Content-Type: application/json
 - Benutzerdefinierte Spalten aus `datawarehouse_stream_columns`
 - Typen: string, integer, decimal, boolean, date, datetime, text, json
 
+## Scheduler
+
+Zwei Minuten-Ticks im `DatawarehouseServiceProvider`:
+
+- `datawarehouse:dispatch-pulls` — stößt Pull-Streams an, deren `pull_schedule` fällig ist.
+- `datawarehouse:snapshot-kpis` — berechnet aktive KPIs neu, deren `snapshot_schedule` fällig ist.
+
+Beide sprechen dieselbe Syntax (`Services/ScheduleExpression`): Shortcuts
+(`every_minute`, `every_5_min`, `every_15_min`, `hourly`, `daily`, `weekly`,
+`monthly`, `quarterly`, `yearly`) oder ein 5-Feld-Cron-Ausdruck.
+
+KPIs kennen zusätzlich zwei Sonderwerte (`Services/KpiSnapshotSchedule`):
+
+- `auto` (Default) — neu rechnen, wenn die Quell-Streams neue Daten haben
+  (`last_run_at` > `cached_at`), bei rollierendem Zeitraum zusätzlich beim
+  Tageswechsel, und spätestens nach `MAX_AGE_HOURS` (24h).
+- `manual` — der Scheduler fasst den KPI nie an; Neuberechnung nur über
+  Dashboard-Aufruf, UI-Button oder `datawarehouse.kpis.execute`.
+
+Ein KPI-Tick kostet je nach Definition ~6-10 Queries (Metadaten, Aggregat,
+Vergleichswert, Cache-Update, Snapshot-Insert, Prune). Deshalb beim Anlegen
+vieler KPIs `auto` stehen lassen und einen festen Takt nur setzen, wenn die
+Quelle wirklich in diesem Takt liefert. `--force` ignoriert das Gating,
+`--kpi=ID` grenzt auf einen KPI ein.
+
 ## MCP / AI-Tools
 
 Alle Modul-Tools liegen unter `src/Tools/*Tool.php` und werden vom Service-Provider

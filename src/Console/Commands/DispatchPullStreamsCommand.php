@@ -6,6 +6,7 @@ use Cron\CronExpression;
 use Illuminate\Console\Command;
 use Platform\Datawarehouse\Jobs\PullStreamJob;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
+use Platform\Datawarehouse\Services\ScheduleExpression;
 
 /**
  * Scheduler tick: iterate over all active pull streams and dispatch a
@@ -83,17 +84,6 @@ class DispatchPullStreamsCommand extends Command
 
     protected function toCron(string $schedule): ?string
     {
-        return match ($schedule) {
-            'every_minute'  => '* * * * *',
-            'every_5_min'   => '*/5 * * * *',
-            'every_15_min'  => '*/15 * * * *',
-            'hourly'        => '0 * * * *',
-            'daily'         => '0 0 * * *',
-            'weekly'        => '0 0 * * 1',
-            'monthly'       => '0 0 1 * *',
-            'quarterly'     => '0 0 1 1,4,7,10 *',
-            'yearly'        => '0 0 1 1 *',
-            default         => str_contains($schedule, ' ') ? $schedule : null,
-        };
+        return ScheduleExpression::toCron($schedule);
     }
 }

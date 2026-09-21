@@ -10,6 +10,7 @@ use Platform\Datawarehouse\Models\DatawarehouseStream;
 use Platform\Datawarehouse\Models\DatawarehouseStreamColumn;
 use Platform\Datawarehouse\Models\DatawarehouseStreamRelation;
 use Platform\Datawarehouse\Services\KpiQueryBuilder;
+use Platform\Datawarehouse\Services\KpiSnapshotSchedule;
 
 class KpiEditor extends Component
 {
@@ -28,6 +29,7 @@ class KpiEditor extends Component
     public ?int $yellowPct = 80;
 
     // Step 4: Meta
+    public string $snapshotSchedule = KpiSnapshotSchedule::DEFAULT;
     public string $name = '';
     public ?string $description = null;
     public string $icon = 'chart-bar';
@@ -115,6 +117,7 @@ class KpiEditor extends Component
 
             // Load display_range from model (fallback: old calendar_filters.date_range)
             $this->displayRange = $kpi->display_range ?? $cal['date_range'] ?? 'current_month';
+            $this->snapshotSchedule = $kpi->snapshotSchedule();
         }
     }
 
@@ -492,6 +495,9 @@ class KpiEditor extends Component
             'yellow_pct'       => $this->yellowPct !== null && $this->yellowPct !== '' ? (int) $this->yellowPct : null,
             'definition'    => $definition,
             'display_range' => (!$this->isGroup && $this->calendarEnabled && $this->calDateColumn) ? $this->displayRange : null,
+            'snapshot_schedule' => KpiSnapshotSchedule::isValid($this->snapshotSchedule)
+                ? KpiSnapshotSchedule::normalize($this->snapshotSchedule)
+                : KpiSnapshotSchedule::DEFAULT,
             'status'        => 'active',
         ];
 

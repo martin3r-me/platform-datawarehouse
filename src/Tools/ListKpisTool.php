@@ -78,7 +78,7 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
             }
 
             $this->applyStandardFilters($query, $arguments, [
-                'name', 'status', 'variant', 'unit', 'format', 'display_range', 'created_at',
+                'name', 'status', 'variant', 'unit', 'format', 'display_range', 'snapshot_schedule', 'created_at',
             ]);
             $this->applyStandardSearch($query, $arguments, ['name', 'description']);
             $this->applyStandardSort($query, $arguments, [
@@ -103,6 +103,7 @@ class ListKpisTool implements ToolContract, ToolMetadataContract
                 'ampel'                   => $k->ampel(),
                 'display_range'           => $k->display_range,
                 'display_range_label'     => $k->displayRangeLabel(),
+                'snapshot_schedule'       => $k->snapshotSchedule(),
                 'cached_value'            => $k->cached_value !== null ? (float)$k->cached_value : null,
                 'cached_comparison_value' => $k->cached_comparison_value !== null ? (float)$k->cached_comparison_value : null,
                 'cached_at'               => $k->cached_at?->toISOString(),

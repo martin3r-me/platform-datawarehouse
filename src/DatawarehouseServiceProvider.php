@@ -101,7 +101,8 @@ class DatawarehouseServiceProvider extends ServiceProvider
                     ->withoutOverlapping(5)
                     ->runInBackground();
 
-                // Snapshot all active KPIs every minute for continuous time series.
+                // Tick every minute; the command gates each KPI on its own
+                // snapshot_schedule (default: only when the sources moved).
                 $schedule->command('datawarehouse:snapshot-kpis')
                     ->everyMinute()
                     ->withoutOverlapping(10)

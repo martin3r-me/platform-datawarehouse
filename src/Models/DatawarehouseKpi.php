@@ -33,6 +33,7 @@ class DatawarehouseKpi extends Model
         'cached_value',
         'cached_at',
         'display_range',
+        'snapshot_schedule',
         'target_value',
         'target_kpi_id',
         'target_direction',
@@ -178,6 +179,36 @@ class DatawarehouseKpi extends Model
     public function hasDateColumn(): bool
     {
         return !empty($this->definition['calendar_filters']['date_column']);
+    }
+
+    /**
+     * True when the value moves with the calendar rather than with the data:
+     * a rolling display range ("Letzte 7 Tage") or a date_range baked into
+     * the definition yields a different number tomorrow even if no import
+     * happened. The snapshot scheduler needs this to know when an otherwise
+     * idle KPI still has to be recomputed.
+     */
+    public function hasRollingDateRange(): bool
+    {
+        if (!$this->hasDateColumn()) {
+            return false;
+        }
+
+        return $this->display_range !== null
+            || !empty($this->definition['calendar_filters']['date_range']);
+    }
+
+    /**
+     * Cadence at which the scheduler snapshots this KPI. See KpiSnapshotSchedule.
+     */
+    public function snapshotSchedule(): string
+    {
+        return \Platform\Datawarehouse\Services\KpiSnapshotSchedule::normalize($this->snapshot_schedule);
+    }
+
+    public function snapshotScheduleLabel(): string
+    {
+        return \Platform\Datawarehouse\Services\KpiSnapshotSchedule::label($this->snapshot_schedule);
     }
 
     public function trendDirection(): ?string

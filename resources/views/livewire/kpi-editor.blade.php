@@ -610,6 +610,24 @@
                             </div>
                             @endunless
 
+                            @unless($isGroup)
+                            {{-- Aktualisierungs-Takt --}}
+                            <div class="pt-4 border-t border-gray-100">
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Aktualisierung</label>
+                                <select
+                                    wire:model.live="snapshotSchedule"
+                                    class="w-full px-3 py-2 text-[13px] rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#166EE1]/20 focus:border-[#166EE1]"
+                                >
+                                    @foreach(\Platform\Datawarehouse\Services\KpiSnapshotSchedule::options() as $schedKey => $schedLabel)
+                                        <option value="{{ $schedKey }}">{{ $schedLabel }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-[11px] text-gray-400 mt-1">
+                                    &bdquo;Automatisch&ldquo; rechnet neu, sobald die Quell-Streams neue Daten geliefert haben &mdash; bei rollierenden Zeitr&auml;umen zus&auml;tzlich beim Tageswechsel, sp&auml;testens alle 24 Stunden. Ein fester Takt rechnet auch dann, wenn sich nichts ge&auml;ndert hat.
+                                </p>
+                            </div>
+                            @endunless
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-500 mb-1">Icon</label>

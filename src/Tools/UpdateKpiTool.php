@@ -9,6 +9,7 @@ use Platform\Core\Contracts\ToolResult;
 use Platform\Core\Tools\Concerns\HasStandardizedWriteOperations;
 use Platform\Datawarehouse\Models\DatawarehouseKpi;
 use Platform\Datawarehouse\Services\KpiDefinitionValidator;
+use Platform\Datawarehouse\Services\KpiSnapshotSchedule;
 use Platform\Datawarehouse\Tools\Concerns\ResolvesDwhTeam;
 use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiAmpel;
 use Platform\Datawarehouse\Tools\Concerns\ValidatesKpiHierarchy;
@@ -54,6 +55,10 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'display_range' => [
                     'type' => 'string',
                     'enum' => ['current_month', 'current_quarter', 'current_year', 'current_week', 'last_7_days', 'last_30_days', 'last_90_days', 'last_12_months', 'previous_month', 'previous_quarter', 'previous_year', 'year_to_date'],
+                ],
+                'snapshot_schedule' => [
+                    'type' => 'string',
+                    'description' => 'Optional: Takt, in dem der Scheduler diesen KPI neu berechnet. "auto" (Default) = nur bei neuen Quelldaten, bei Tageswechsel eines rollierenden Zeitraums und spätestens alle 24h. Alternativ every_minute/every_5_min/every_15_min/hourly/daily/weekly/monthly, ein 5-Feld-Cron-Ausdruck oder "manual" (nie automatisch).',
                 ],
                 'definition' => [
                     'type' => 'object',
@@ -101,6 +106,14 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                     return ToolResult::error('VALIDATION_ERROR', 'Ungültiges display_range.');
                 }
                 $kpi->display_range = $range;
+            }
+
+            if (array_key_exists('snapshot_schedule', $arguments)) {
+                $snapshotSchedule = KpiSnapshotSchedule::normalize($arguments['snapshot_schedule']);
+                if (!KpiSnapshotSchedule::isValid($snapshotSchedule)) {
+                    return ToolResult::error('VALIDATION_ERROR', 'Ungültiges snapshot_schedule. Erlaubt: ' . implode(', ', array_keys(KpiSnapshotSchedule::options())) . ' oder ein 5-Feld-Cron-Ausdruck.');
+                }
+                $kpi->snapshot_schedule = $snapshotSchedule;
             }
 
             if (array_key_exists('parent_kpi_id', $arguments)) {
@@ -170,6 +183,7 @@ class UpdateKpiTool implements ToolContract, ToolMetadataContract
                 'parent_kpi_id'      => $kpi->parent_kpi_id !== null ? (int) $kpi->parent_kpi_id : null,
                 'is_group'           => (bool) $kpi->is_group,
                 'display_range'      => $kpi->display_range,
+                'snapshot_schedule'  => $kpi->snapshot_schedule,
                 'status'             => $kpi->status,
                 'team_id'            => $kpi->team_id,
                 'definition_changed' => $definitionChanged,
