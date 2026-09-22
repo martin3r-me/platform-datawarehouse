@@ -310,6 +310,8 @@
                                         <div class="w-2 h-2 rounded-full shrink-0 bg-green-500"></div>
                                     @elseif($stream->status === 'paused')
                                         <div class="w-2 h-2 rounded-full shrink-0 bg-gray-400"></div>
+                                    @elseif($stream->status === 'archived')
+                                        <div class="w-2 h-2 rounded-full shrink-0 bg-gray-300 ring-1 ring-gray-400"></div>
                                     @else
                                         <div class="w-2 h-2 rounded-full shrink-0 bg-gray-300"></div>
                                     @endif
@@ -320,6 +322,8 @@
                                                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-yellow-100 text-yellow-700">Onboarding</span>
                                             @elseif($stream->status === 'paused')
                                                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600">Pausiert</span>
+                                            @elseif($stream->status === 'archived')
+                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-200 text-gray-700">Archiviert</span>
                                             @endif
                                         </div>
                                         <div class="text-[11px] text-gray-400 flex items-center gap-1 flex-wrap">

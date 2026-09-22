@@ -555,11 +555,24 @@ class KpiEditor extends Component
     public function availableBaseStreams(): \Illuminate\Support\Collection
     {
         $team = Auth::user()->currentTeam;
+        $currentBaseId = $this->selectedStreams[0]['stream_id'] ?? null;
 
         return DatawarehouseStream::forTeam($team->id)
             ->where('table_created', true)
+            // Archived streams are retired — no new KPI should be built on one.
+            // Exception: the base an existing KPI already points at, so editing
+            // that KPI does not silently drop its own source from the picker.
+            // Paused streams stay selectable (their data is still valid) but the
+            // view marks them, so nobody builds on a frozen value by accident.
+            ->where(function ($q) use ($currentBaseId) {
+                $q->where('status', '!=', 'archived');
+
+                if ($currentBaseId) {
+                    $q->orWhere('id', $currentBaseId);
+                }
+            })
             ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+            ->get(['id', 'name', 'slug', 'status']);
     }
 
     #[Computed]
@@ -582,7 +595,7 @@ class KpiEditor extends Component
                 $q->whereNotIn('source_stream_id', $selectedIds)
                   ->orWhereNotIn('target_stream_id', $selectedIds);
             })
-            ->with(['sourceStream:id,name', 'targetStream:id,name'])
+            ->with(['sourceStream:id,name,status', 'targetStream:id,name,status'])
             ->get()
             ->filter(function ($relation) use ($selectedIds) {
                 // A relation whose other end no longer resolves (the stream was
@@ -595,7 +608,15 @@ class KpiEditor extends Component
                 // Ensure exactly one side is selected and the other is not
                 $sourceSelected = in_array($relation->source_stream_id, $selectedIds);
                 $targetSelected = in_array($relation->target_stream_id, $selectedIds);
-                return $sourceSelected !== $targetSelected;
+                if ($sourceSelected === $targetSelected) {
+                    return false;
+                }
+
+                // Same rule as the base picker: nothing new gets chained onto an
+                // archived stream.
+                $candidate = $sourceSelected ? $relation->targetStream : $relation->sourceStream;
+
+                return $candidate->status !== 'archived';
             });
     }
 

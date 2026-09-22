@@ -88,8 +88,15 @@
                             >
                                 <option value="">— Datenstrom wählen —</option>
                                 @foreach($this->availableBaseStreams as $stream)
+                                    @php
+                                        $streamLabel = $stream->name . match ($stream->status) {
+                                            'paused'   => ' (pausiert)',
+                                            'archived' => ' (archiviert)',
+                                            default    => '',
+                                        };
+                                    @endphp
                                     <option value="{{ $stream->id }}" {{ isset($selectedStreams[0]) && $selectedStreams[0]['stream_id'] == $stream->id ? 'selected' : '' }}>
-                                        {{ $stream->name }}
+                                        {{ $streamLabel }}
                                     </option>
                                 @endforeach
                             </select>
@@ -143,7 +150,12 @@
                                             >
                                                 @svg('heroicon-o-plus', 'w-4 h-4 text-[#166EE1] shrink-0')
                                                 <div>
-                                                    <div class="text-[13px] font-medium text-gray-900">{{ $newStream->name }}</div>
+                                                    <div class="text-[13px] font-medium text-gray-900">
+                                                        {{ $newStream->name }}
+                                                        @if($newStream->status === 'paused')
+                                                            <span class="text-[11px] font-normal text-amber-600">(pausiert)</span>
+                                                        @endif
+                                                    </div>
                                                     <div class="text-[11px] text-gray-400">
                                                         via {{ $relation->label ?: $relation->source_column . ' → ' . $relation->target_column }}
                                                     </div>
