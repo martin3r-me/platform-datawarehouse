@@ -143,11 +143,13 @@ class StreamDetail extends Component
         $outgoing = $this->stream->outgoingRelations()->with('targetStream:id,name')->get();
         $incoming = $this->stream->incomingRelations()->with('sourceStream:id,name')->get();
 
+        // The counterpart can be gone (soft-deleted stream, surviving relation)
+        // — name it by id rather than blowing up the whole delete dialog.
         foreach ($outgoing as $rel) {
-            $blockers[] = "Relation '{$rel->label}' → {$rel->targetStream->name}";
+            $blockers[] = "Relation '{$rel->label}' → " . ($rel->targetStream?->name ?? "#{$rel->target_stream_id} (gelöscht)");
         }
         foreach ($incoming as $rel) {
-            $blockers[] = "Relation '{$rel->label}' ← {$rel->sourceStream->name}";
+            $blockers[] = "Relation '{$rel->label}' ← " . ($rel->sourceStream?->name ?? "#{$rel->source_stream_id} (gelöscht)");
         }
 
         // Check for KPIs that reference this stream

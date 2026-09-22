@@ -585,6 +585,13 @@ class KpiEditor extends Component
             ->with(['sourceStream:id,name', 'targetStream:id,name'])
             ->get()
             ->filter(function ($relation) use ($selectedIds) {
+                // A relation whose other end no longer resolves (the stream was
+                // soft-deleted while the relation row survived) is not chainable
+                // — and rendering it would dereference null.
+                if (!$relation->sourceStream || !$relation->targetStream) {
+                    return false;
+                }
+
                 // Ensure exactly one side is selected and the other is not
                 $sourceSelected = in_array($relation->source_stream_id, $selectedIds);
                 $targetSelected = in_array($relation->target_stream_id, $selectedIds);

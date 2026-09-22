@@ -136,6 +136,7 @@
                                                     ? $relation->targetStream
                                                     : $relation->sourceStream;
                                             @endphp
+                                            @continue(!$newStream)
                                             <button
                                                 wire:click="addChainedStream({{ $relation->id }})"
                                                 class="flex items-center gap-3 w-full p-3 rounded-md border border-dashed border-gray-300 hover:border-[#166EE1] hover:bg-blue-50/50 transition-colors text-left"

@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Models\Team;
 use Platform\Core\Models\User;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
+use Platform\Datawarehouse\Models\DatawarehouseStreamRelation;
 use Platform\Datawarehouse\Tools\ActivateStreamTool;
 use Platform\Datawarehouse\Tools\ArchiveStreamTool;
 use Platform\Datawarehouse\Tools\BulkCreateStreamColumnsTool;
@@ -240,6 +241,38 @@ class StreamToolsTest extends TestCase
         $this->assertFalse($result->success);
         $this->assertSame('VALIDATION_ERROR', $result->errorCode);
         $this->assertDatabaseHas('datawarehouse_streams', ['id' => $stream->id, 'deleted_at' => null]);
+    }
+
+    public function test_delete_stream_blocks_streams_still_used_in_a_relation(): void
+    {
+        $source = DatawarehouseStream::create([
+            'team_id'     => $this->team->id,
+            'user_id'     => $this->user->id,
+            'name'        => 'Aufträge',
+            'source_type' => 'webhook_post',
+        ]);
+        $target = DatawarehouseStream::create([
+            'team_id'     => $this->team->id,
+            'user_id'     => $this->user->id,
+            'name'        => 'Kunden',
+            'source_type' => 'webhook_post',
+        ]);
+        DatawarehouseStreamRelation::create([
+            'team_id'          => $this->team->id,
+            'source_stream_id' => $source->id,
+            'source_column'    => 'kunde_id',
+            'target_stream_id' => $target->id,
+            'target_column'    => 'id',
+            'label'            => 'Auftrag → Kunde',
+        ]);
+
+        $tool = new DeleteStreamTool();
+        $result = $tool->execute(['stream_id' => $target->id], $this->context);
+
+        $this->assertFalse($result->success);
+        $this->assertSame('VALIDATION_ERROR', $result->errorCode);
+        $this->assertStringContainsString('Auftrag → Kunde', $result->error);
+        $this->assertDatabaseHas('datawarehouse_streams', ['id' => $target->id, 'deleted_at' => null]);
     }
 
     public function test_bulk_create_stream_columns_enforces_max_50(): void

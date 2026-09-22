@@ -8,6 +8,7 @@ use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
 use Platform\Core\Tools\Concerns\HasStandardizedWriteOperations;
 use Platform\Datawarehouse\Models\DatawarehouseStream;
+use Platform\Datawarehouse\Models\DatawarehouseStreamRelation;
 use Platform\Datawarehouse\Tools\Concerns\ResolvesDwhTeam;
 
 class DeleteStreamTool implements ToolContract, ToolMetadataContract
@@ -22,7 +23,7 @@ class DeleteStreamTool implements ToolContract, ToolMetadataContract
 
     public function getDescription(): string
     {
-        return 'DELETE /datawarehouse/streams/{id} - Soft-deletet einen Stream. ERFORDERLICH: stream_id. System-Streams können nicht gelöscht werden. Der dynamische Stream-Table bleibt zur Datensicherung erhalten und wird NICHT mit gelöscht.';
+        return 'DELETE /datawarehouse/streams/{id} - Soft-deletet einen Stream. ERFORDERLICH: stream_id. System-Streams können nicht gelöscht werden. Ein Stream, der noch in Stream-Relationen referenziert wird, wird abgelehnt — erst die Relationen über "datawarehouse.stream_relations.DELETE" entfernen (sonst bleiben verwaiste Relationen zurück, die den KPI-Editor beim Verknüpfen abstürzen lassen). Der dynamische Stream-Table bleibt zur Datensicherung erhalten und wird NICHT mit gelöscht.';
     }
 
     public function getSchema(): array
@@ -71,6 +72,28 @@ class DeleteStreamTool implements ToolContract, ToolMetadataContract
 
             if ($stream->isSystem()) {
                 return ToolResult::error('VALIDATION_ERROR', 'System-Streams können nicht gelöscht werden.');
+            }
+
+            // Same invariant the UI enforces: a referenced stream stays. Soft
+            // deleting it anyway leaves relations pointing at nothing, and every
+            // consumer that resolves the counterpart then hits null.
+            $relations = DatawarehouseStreamRelation::where('team_id', $teamId)
+                ->where(function ($q) use ($stream) {
+                    $q->where('source_stream_id', $stream->id)
+                      ->orWhere('target_stream_id', $stream->id);
+                })
+                ->get();
+
+            if ($relations->isNotEmpty()) {
+                $labels = $relations
+                    ->map(fn ($r) => $r->label ?: "#{$r->id}")
+                    ->implode(', ');
+
+                return ToolResult::error(
+                    'VALIDATION_ERROR',
+                    "Stream wird noch von {$relations->count()} Stream-Relation(en) referenziert ({$labels}). "
+                    . 'Erst die Relationen über "datawarehouse.stream_relations.DELETE" entfernen, dann den Stream löschen.'
+                );
             }
 
             $stream->delete();
