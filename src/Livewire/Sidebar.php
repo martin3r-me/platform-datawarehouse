@@ -24,17 +24,22 @@ class Sidebar extends Component
 
         $teamId = $user->currentTeam->id;
 
+        // Sorted in PHP, same reason as in Dashboard::render(): sorting whole
+        // stream rows in MySQL can exceed the sort buffer once a metadata
+        // column is large - and the sidebar renders on every module page.
         $systemStreams = DatawarehouseStream::where('team_id', $teamId)
             ->system()
             ->whereIn('status', ['active', 'onboarding'])
-            ->orderBy('name')
-            ->get();
+            ->get()
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         $userStreams = DatawarehouseStream::where('team_id', $teamId)
             ->userCreated()
             ->whereIn('status', ['active', 'onboarding'])
-            ->orderBy('name')
-            ->get();
+            ->get()
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         $kpiStatuses = ['active', 'draft', 'error'];
         $allKpis = DatawarehouseKpi::forTeam($teamId)

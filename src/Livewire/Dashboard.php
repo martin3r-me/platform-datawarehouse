@@ -126,10 +126,15 @@ class Dashboard extends Component
             app(SystemStreamProvisioner::class)->ensureForTeam($team->id);
         }
 
+        // Sorted in PHP on purpose: "order by name" over select * makes MySQL
+        // filesort whole rows, and a stream's metadata column can be large.
+        // That blew the sort buffer (SQLSTATE HY001 / error 1038) and took the
+        // whole module down. A team's stream count is small, PHP handles it.
         $allStreams = DatawarehouseStream::where('team_id', $team->id)
             ->withCount('imports')
-            ->orderBy('name')
-            ->get();
+            ->get()
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         $systemStreams = $allStreams->where('is_system', true);
         $userStreams = $allStreams->where('is_system', false);

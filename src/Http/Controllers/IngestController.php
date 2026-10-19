@@ -12,6 +12,12 @@ use Platform\Datawarehouse\Services\StreamImportService;
 
 class IngestController extends Controller
 {
+    /** Rows kept from an onboarding payload - same cap the upload path uses. */
+    private const SAMPLE_ROWS = 200;
+
+    /** Hard ceiling for the stored sample, encoded. */
+    private const SAMPLE_MAX_BYTES = 262144;
+
     /**
      * POST /api/datawarehouse/ingest/{token}
      *
@@ -68,11 +74,44 @@ class IngestController extends Controller
         ], $import->status === 'error' ? 422 : 200);
     }
 
+    /**
+     * Keep the stored onboarding sample small.
+     *
+     * The sample only feeds the column mapping in StreamOnboarding - a
+     * couple of rows are enough, the full payload never was. Stored
+     * uncapped it lands in datawarehouse_streams.metadata and makes the row
+     * so wide that merely listing the team's streams ("order by name" over
+     * select *) exhausts MySQL's sort buffer and 500s the whole module.
+     *
+     * The untouched payload stays available in datawarehouse_imports.raw_payload,
+     * so nothing is lost - it just no longer sits in a column that every
+     * stream listing drags along.
+     */
+    protected function trimSample(array $payload): array
+    {
+        $sample = array_is_list($payload)
+            ? array_slice($payload, 0, self::SAMPLE_ROWS)
+            : $payload;
+
+        if (strlen((string) json_encode($sample)) <= self::SAMPLE_MAX_BYTES) {
+            return $sample;
+        }
+
+        // Few but very wide rows: keep the first one.
+        $first = array_is_list($sample) ? array_slice($sample, 0, 1) : $sample;
+
+        if (strlen((string) json_encode($first)) <= self::SAMPLE_MAX_BYTES) {
+            return $first;
+        }
+
+        return ['_truncated' => 'Sample zu gross zum Speichern - siehe raw_payload des Imports.'];
+    }
+
     protected function handleOnboarding(DatawarehouseStream $stream, array $payload, string $rawData): JsonResponse
     {
-        // Store sample payload in metadata
+        // Store sample payload in metadata - trimmed, see trimSample().
         $metadata = $stream->metadata ?? [];
-        $metadata['sample_payload'] = $payload;
+        $metadata['sample_payload'] = $this->trimSample($payload);
         $stream->update(['metadata' => $metadata]);
 
         // Create import record with raw_payload for later processing
