@@ -42,7 +42,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
         if (
             config()->has('datawarehouse.routing') &&
             config()->has('datawarehouse.navigation') &&
-            Schema::hasTable('modules')
+            PlatformCore::modulesTableExists()
         ) {
             PlatformCore::registerModule([
                 'key'        => 'datawarehouse',
