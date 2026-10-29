@@ -47,6 +47,7 @@ class DatawarehouseServiceProvider extends ServiceProvider
             PlatformCore::registerModule([
                 'key'        => 'datawarehouse',
                 'title'      => 'Datawarehouse',
+                'group'      => 'tools',
                 'routing'    => config('datawarehouse.routing'),
                 'guard'      => config('datawarehouse.guard'),
                 'navigation' => config('datawarehouse.navigation'),
